@@ -61,7 +61,7 @@ source install/local_setup.bash
 
 ## Quick Start
 
-To launch the ROS 2 node:
+To launch the ROS 2 node, you do not need to acrtivate the venv, simply run:
 
 ```bash
 ros2 launch graspnet_ros run_grasp_node.launch.py

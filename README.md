@@ -52,7 +52,7 @@ pip install -r requirements.txt
 - The checkpoint folder should not be extracted. Leave it as a compressed file in the graspnet-baseline folder.
 </details>
 
-Finally, return to your ROS 2 workspace root and build the package:
+Finally, return to your ROS 2 workspace root, deactivate the venv, and build the package:
 ```bash
 cd ~/your_ros_ws
 colcon build --symlink-install

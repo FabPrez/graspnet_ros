@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>graspnet_ros</name>
+  <version>0.0.1</version>
+  <description>Un nodo che si iscrive a un topic.</description>
+  <maintainer email="tuo@email.com">Il Tuo Nome</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  
+
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+  <depend>octomap</depend>
+  <depend>octomap_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>pointcloud_handler</depend>
+  <depend>nbv_octomap_utils</depend>
+
+<!-- 
+  <test_depend>pointcloud_handler</test_depend>
+
+  <exec_depend>pointcloud_handler</exec_depend> -->
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

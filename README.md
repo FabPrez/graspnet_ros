@@ -53,13 +53,23 @@ pip install -r requirements.txt
 <summary><strong>Troubleshooting during graspnet-baseline installation</strong></summary>
 
 - Use the correct version of PyTorch for your CUDA version.
-- Compile with GCC 9 and G++ 9 when installing pointnet2. Set the compilers before running the installation:
+- ERRORS during installing pointnet2 and knn: Set the compilers GCC 9 and G++ 9 before running the installation:
     ```bash
     export CC=gcc-9
     export CXX=g++-9
     ```
+- Typeguard may miss in the requirements, so install it by yourself: "pip install typeguard"
 - The checkpoint folder should not be extracted. Leave it as a compressed file in the graspnet-baseline folder.
+- ERROR "no modul name Torch._six": Inside graspnet-baseline/dataset/_dataset.py substitute:
+    ```bash
+    from torch.six import container_abcs
+    ```
+    with:
+   ```bash
+    import collections.abc as container_abcs
+    ```
 </details>
+
 
 Finally, return to your ROS 2 workspace root, deactivate the venv, and build the package:
 ```bash

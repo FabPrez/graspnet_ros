@@ -14,7 +14,7 @@ setup(
     license='MIT',
     entry_points={
         'console_scripts': [
-            'main = scripts.main:main'
+            'graspnet_node = scripts.graspnet_node:main'
         ],
     },
 )

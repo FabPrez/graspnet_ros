@@ -23,10 +23,10 @@ sys.path.append(os.path.join(graspnet_baseline_dir, 'utils'))
 
 
 # print all the paths in sys.path
-print("****************************************************************************")
-for path in sys.path:
-    print(path)
-print("****************************************************************************")
+# print("****************************************************************************")
+# for path in sys.path:
+#     print(path)
+# print("****************************************************************************")
 
 
 
@@ -143,6 +143,47 @@ def demo(data_dir):
     gg = get_grasps(net, end_points)
     if collision_thresh > 0:
         gg = collision_detection(gg, np.array(cloud.points))
+    vis_grasps(gg, cloud)
+    
+def run_graspnet_pipeline(points):
+    """
+    :param points: np.ndarray di shape (N, 3) con coordinate XYZ
+    :return: GraspGroup
+    """
+    net = get_net()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    # Sampling dei punti
+    # if len(points) >= num_point:
+    #     idxs = np.random.choice(len(points), num_point, replace=False)
+    # else:
+    #     idxs1 = np.arange(len(points))
+    #     idxs2 = np.random.choice(len(points), num_point - len(points), replace=True)
+    #     idxs = np.concatenate([idxs1, idxs2], axis=0)
+    # cloud_sampled = points[idxs]
+    cloud_sampled = points
+
+    # Colori fittizi (grigio) se non disponibili
+    color_sampled = np.ones_like(cloud_sampled, dtype=np.float32) * 0.5
+
+    # Prepara dizionario end_points
+    cloud_tensor = torch.from_numpy(cloud_sampled[np.newaxis].astype(np.float32)).to(device)
+    end_points = {
+        'point_clouds': cloud_tensor,
+        'cloud_colors': color_sampled
+    }
+    
+    # print the points
+    print("[DEBUG] points:", points, flush=True)
+    print("[DEBUG] cloud_sampled:", cloud_sampled, flush=True)
+
+    gg = get_grasps(net, end_points)
+    if collision_thresh > 0:
+        gg = collision_detection(gg, points)
+    cloud = o3d.geometry.PointCloud()
+    cloud.points = o3d.utility.Vector3dVector(points.astype(np.float32))
+    print("[DEBUG] Eseguita graspnet_pipeline", flush=True)
+    print("[DEBUG] gg:", gg, flush=True)
     vis_grasps(gg, cloud)
 
 if __name__=='__main__':

@@ -46,7 +46,8 @@ find_package(sensor_msgs REQUIRED)
 # In order to let ros2 find the executable
 install(PROGRAMS
   ${CMAKE_CURRENT_SOURCE_DIR}/scripts/graspnet-baseline
-  ${CMAKE_CURRENT_SOURCE_DIR}/scripts/main.py
+  ${CMAKE_CURRENT_SOURCE_DIR}/scripts/graspnet_node.py
+  ${CMAKE_CURRENT_SOURCE_DIR}/scripts/graspnet_pipeline.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

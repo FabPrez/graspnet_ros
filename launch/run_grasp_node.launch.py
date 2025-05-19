@@ -11,8 +11,8 @@ def generate_launch_description():
     return LaunchDescription([
         Node(
             package='graspnet_ros',
-            executable='main.py',
-            name='graspnet_ros',
+            executable='graspnet_node.py',
+            name='graspnet_node',
             output='screen',
             prefix=f'{python_bin}'
         )

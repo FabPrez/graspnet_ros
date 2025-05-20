@@ -1,2 +1,5 @@
-**/venv_*/
+# Ignore the virtual environment
+scripts/venv_graspnet/
+
+# Ignore the configuration file
 setup.cfg

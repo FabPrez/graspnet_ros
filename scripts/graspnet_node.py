@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import os
 import sys
 
@@ -15,11 +14,14 @@ import numpy as np
 class GraspNetNode(Node):
     def __init__(self):
         super().__init__('graspnet_node')
+        
+        # #! -- inizio: PROVA demo_pcd --
+        # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/trial_simulated_pointcloud.pcd'
+        # graspnet_pipeline.demo_pcd(pcd_path)
+        # #! -- fine: PROVA demo_pcd --
+        
         self.subscription = self.create_subscription(
-            PointCloud2,
-            '/octomap_point_cloud_centers',
-            self.pointcloud_callback,
-            10)
+            PointCloud2, '/octomap_point_cloud_centers', self.pointcloud_callback, 10)
         self.get_logger().info("GraspNetNode started, listening for point clouds...")
 
     def pointcloud_callback(self,msg):
@@ -28,14 +30,13 @@ class GraspNetNode(Node):
         pc = list(pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True))
 
         if len(pc) == 0:
-            self.get_logger().warn("Empty point cloud received")
+            self.get_logger().warn("Empty pointcloud received")
             return
 
-        # Converti la lista di tuple in array 2D (N, 3)
+        # Convert the list of tuples into a 2D array (N, 3)
         points = np.array([ [x, y, z] for x, y, z in pc ], dtype=np.float32)
 
-
-        # Esegui la pipeline senza colore
+        # Run the pipeline without color
         graspnet_pipeline.run_graspnet_pipeline(points)
         
 

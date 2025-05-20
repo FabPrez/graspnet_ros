@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 import os
 import sys
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-
-import graspnet_pipeline
+import numpy as np
 import rclpy
+import sensor_msgs_py.point_cloud2 as pc2
+import threading
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
-import sensor_msgs_py.point_cloud2 as pc2
-import numpy as np
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+import graspnet_pipeline
 
 class GraspNetNode(Node):
     def __init__(self):
         super().__init__('graspnet_node')
         
-        # #! -- inizio: PROVA demo_pcd --
+        # #! -- inizio: [DEBUG] Function to be used to debug (demo_pcd) --
         # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/trial_simulated_pointcloud.pcd'
         # graspnet_pipeline.demo_pcd(pcd_path)
-        # #! -- fine: PROVA demo_pcd --
+        # #! -- fine: [DEBUG] Function to be used to debug (demo_pcd) --
         
         self.subscription = self.create_subscription(
             PointCloud2, '/octomap_point_cloud_centers', self.pointcloud_callback, 10)
         self.get_logger().info("GraspNetNode started, listening for point clouds...")
 
-    def pointcloud_callback(self,msg):
+    def pointcloud_callback(self, msg):
         self.get_logger().info("Received PointCloud2")
 
         pc = list(pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True))
@@ -37,17 +37,29 @@ class GraspNetNode(Node):
         points = np.array([ [x, y, z] for x, y, z in pc ], dtype=np.float32)
 
         # Run the pipeline without color
-        graspnet_pipeline.run_graspnet_pipeline(points)
-        
+        graspnet_pipeline.run_graspnet_pipeline(points) 
 
 
-if __name__=='__main__':
-    print("Starting GraspNetNode...")
-    rclpy.init()
+def main(args=None):
+    rclpy.init(args=args)
     node = GraspNetNode()
+
+    # Start the visualization thread (daemon=True → it dies with the main thread)
+    vis_thread = threading.Thread(target=graspnet_pipeline.visualizer_loop, daemon=True)
+    vis_thread.start()
+
+    # Start ROS2 spin
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
-    node.destroy_node()
-    rclpy.shutdown()
+    finally:
+        with graspnet_pipeline.lock:
+            graspnet_pipeline.terminate = True
+        vis_thread.join()
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()

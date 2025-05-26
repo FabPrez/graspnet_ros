@@ -14,6 +14,7 @@ from graspnetAPI import GraspGroup
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 graspnet_baseline_dir = os.path.join(current_dir, 'graspnet-baseline')
+checkpoint_path = os.path.join(graspnet_baseline_dir, 'checkpoint-rs.tar') #! CANNOT be changed
 doc_dir = os.path.join(graspnet_baseline_dir, 'doc', 'example_data')
 sys.path.append(current_dir)
 sys.path.append(graspnet_baseline_dir)
@@ -25,40 +26,13 @@ from graspnet import GraspNet, pred_decode
 from graspnet_dataset import GraspNetDataset
 from collision_detector import ModelFreeCollisionDetector
 from data_utils import CameraInfo, create_point_cloud_from_depth_image
-
-# -----------------------------------------
-# Parameters
-# -----------------------------------------
-checkpoint_path = os.path.join(graspnet_baseline_dir, 'checkpoint-rs.tar') #! CANNOT be changed
-hmin = -0.00 # default: -0.02
-hmax_list = [0.04, 0.06, 0.08, 0.10] # default: [0.01, 0.02, 0.03, 0.04]
-num_point = 100 # default: 20000
-num_view = 300 # default: 300 #! CANNOT be changed
-num_angle = 12 # default: 12 #! CANNOT be changed
-num_depth = len(hmax_list) # default: 4 #! CANNOT be changed
-cylinder_radius = 1.00 # default: 0.05
-collision_thresh = 0.01 # default: 0.01
-voxel_size = 0.01 # default: 0.01
-
-# -----------------------------------------
-# Global variables for the visualization
-# -----------------------------------------
-vis = None
-pcd_vis = None
-gripper_list = []
-net = None
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-latest_points = None
-latest_gg = None
-pending_update = False
-terminate = False
-lock = threading.Lock()
-num_best_grasps = 50 # default: 50
+from parameters import *
 
 
 def get_net():
     """
     Function to load the graspnet model (parameters + checkpoint folder).
+    ----- Output parameters -----
     :return: net
     """
     global net
@@ -73,7 +47,7 @@ def get_net():
     # Load checkpoint
     checkpoint = torch.load(checkpoint_path)
     net.load_state_dict(checkpoint['model_state_dict'])
-    print("-> loaded checkpoint %s"%(checkpoint_path), flush=True)
+    print(f"-> loaded checkpoint {checkpoint_path}", flush=True)
     net.eval()
     return net
 
@@ -81,8 +55,10 @@ def get_net():
 def get_grasps(net, end_points):
     """
     Function to get the grasps.
+    ----- Input parameters -----
     :param net: graspnet model
     :param end_points: dictionary with the input data (pointcloud and colors)
+    ----- Output parameters -----
     :return: GraspGroup
     """
     with torch.no_grad():
@@ -96,12 +72,14 @@ def get_grasps(net, end_points):
 def collision_detection(gg, cloud):
     """
     Function to detect collisions between the grasps and the point cloud.
+    ----- Input parameters -----
     :param gg: GraspGroup (predicted grasps)
     :param cloud: pointcloud
+    ----- Output parameters -----
     :return: GraspGroup (filtered grasps)
     """
-    mfcdetector = ModelFreeCollisionDetector(cloud, voxel_size=voxel_size)
-    collision_mask = mfcdetector.detect(gg, approach_dist=0.05, collision_thresh=collision_thresh)
+    mfcdetector = ModelFreeCollisionDetector(cloud, finger_width=finger_width, finger_length=finger_length, voxel_size=voxel_size)
+    collision_mask = mfcdetector.detect(gg, approach_dist=approach_dist, collision_thresh=collision_thresh)
     gg = gg[~collision_mask]
     return gg
 
@@ -109,9 +87,11 @@ def collision_detection(gg, cloud):
 def create_ground_plane(x_range, y_range, step=1.0):
     """
     Function to create a ground plane in Open3D.
+    ----- Input parameters -----
     :param x_range: (x_min, x_max)
     :param y_range: (y_min, y_max)
     :param step: step size for the grid
+    ----- Output parameters -----
     :return: mesh (TriangleMesh) and grid (LineSet)
     """
     # 1) Generate the vertices of the regular grid
@@ -158,6 +138,10 @@ def init_visualizer():
     - the reference axis
     - the ground plane
     - an empty PointCloud that will be updated in update_visualization().
+    ----- Output parameters -----
+    :return vis = Open3D Visualizer
+    :return pcd_vis = PointCloud placeholder
+    :return gripper_list = list of grippers
     """
     global vis, pcd_vis, gripper_list
     if vis is not None:
@@ -194,8 +178,9 @@ def update_visualization(points_np, gg):
     """
     Function to update the Open3D window with the new pointcloud and the new grasps.
     This method is called ONLY by the visualization thread!
-    points_np: numpy array (Nx3) with the new pointcloud
-    gg: GraspGroup (predicted grasps)
+    ----- Input parameters -----
+    :param points_np = numpy array (Nx3) with the new pointcloud
+    :param gg = GraspGroup (predicted grasps)
     """
     global vis, pcd_vis, gripper_list
 
@@ -218,10 +203,7 @@ def update_visualization(points_np, gg):
     print(f"Total number of grasps generated: {len(gg)}", flush=True)
     gg = gg[:num_best_grasps] # Limit to the top num_best_grasps grasps
     new_grippers = gg.to_open3d_geometry_list()
-    if len(gg) < num_best_grasps:
-        print(f"Visualize the best {len(gg)} grasps", flush=True)
-    else:
-        print(f"Visualize the best {num_best_grasps} grasps", flush=True)
+    print(f"Visualize the best {len(gg)} grasps", flush=True)
     for g in new_grippers:
         vis.add_geometry(g)
         gripper_list.append(g)
@@ -271,7 +253,9 @@ def run_graspnet_pipeline(points):
     """
     This function is called for each new pointcloud received (numpy array Nx3).
     It computes the grasps and calls update_visualization() to update the window.
+    ----- Input parameters -----
     :param points: np.ndarray of shape (N, 3) with XYZ coordinates
+    ----- Output parameters -----
     :return: GraspGroup (predicted grasps)
     """
     global latest_points, latest_gg, pending_update
@@ -298,8 +282,8 @@ def run_graspnet_pipeline(points):
 
     # Compute the grasps
     gg = get_grasps(net, end_points)
-    # if collision_thresh > 0:
-    #     gg = collision_detection(gg, points)
+    if collision_thresh > 0:
+        gg = collision_detection(gg, points)
     
     # Put the results in the shared buffer, signaling the visualization thread
     with lock:
@@ -309,119 +293,140 @@ def run_graspnet_pipeline(points):
 
 
 #! -- inizio: [DEBUG] Functions to be used to debug --
-# def demo(doc_dir):
-#     '''
-#     Function to be used to DEBUG.
-#     Demo to visualize the grasps from the 'color.png', 'depth.png', 'workspace_mask.png' in doc_dir
-#     :param doc_dir: directory containing the 'color.png', 'depth.png', 'workspace_mask.png'
-#     :return: None
-#     '''
-#     net = get_net()
-#     end_points, cloud = get_and_process_data(doc_dir)
-#     gg = get_grasps(net, end_points)
-#     if collision_thresh > 0:
-#         gg = collision_detection(gg, np.array(cloud.points))
-#     visualization_in_open3d(gg, cloud)
+def demo(doc_dir):
+    """
+    Function to be used to DEBUG.
+    Demo to visualize the grasps from the 'color.png', 'depth.png', 'workspace_mask.png' in doc_dir
+    ----- Input parameters -----
+    :param doc_dir: directory containing the 'color.png', 'depth.png', 'workspace_mask.png'
+    ----- Output parameters -----
+    :return: None
+    """
+    net = get_net()
+    end_points, cloud = get_and_process_data(doc_dir)
+    gg = get_grasps(net, end_points)
+    if collision_thresh > 0:
+        gg = collision_detection(gg, np.array(cloud.points))
+    visualization_in_open3d(gg, cloud)
     
 
-# def demo_pcd(pcd_path):
-#     '''
-#     Function to be used to DEBUG.
-#     Demo to visualize the grasps from the pcd file
-#     :param pcd_path: path to the pcd file
-#     :return: None
-#     '''
-#     net = get_net()
+def demo_pcd(pcd_path):
+    '''
+    Function to be used to DEBUG.
+    Demo to visualize the grasps from the pcd file
+    ----- Input parameters -----
+    :param pcd_path: path to the pcd file
+    ----- Output parameters -----
+    :return: None
+    '''
+    net = get_net()
     
-#     # 1) Read the PCD
-#     pcd = o3d.io.read_point_cloud(pcd_path)
-#     pts = np.asarray(pcd.points, dtype=np.float32)
-#     print("-> loaded pointcloud %s"%(pcd_path))
+    # 1) Read the PCD
+    pcd = o3d.io.read_point_cloud(pcd_path)
+    pts = np.asarray(pcd.points, dtype=np.float32)
+    print(f"-> loaded pointcloud {pcd_path} with {np.asarray(pcd.points).shape[0]} points", flush=True)
     
-#     # 2) Sample exactly as in get_and_process_data()
-#     if len(pts) >= num_point:
-#         idxs = np.random.choice(len(pts), num_point, replace=False)
-#     else:
-#         idxs1 = np.arange(len(pts))
-#         idxs2 = np.random.choice(len(pts), num_point - len(pts), replace=True)
-#         idxs = np.concatenate([idxs1, idxs2], axis=0)
-#     pts_sampled = pts[idxs]
+    # 2) Sample exactly as in get_and_process_data()
+    if len(pts) >= num_point:
+        idxs = np.random.choice(len(pts), num_point, replace=False)
+    else:
+        idxs1 = np.arange(len(pts))
+        idxs2 = np.random.choice(len(pts), num_point - len(pts), replace=True)
+        idxs = np.concatenate([idxs1, idxs2], axis=0)
+    pts_sampled = pts[idxs]
     
-#     # 3) Build end_points
-#     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#     pts_tensor = torch.from_numpy(pts_sampled[np.newaxis].astype(np.float32)).to(device)
-#     end_points = {'point_clouds': pts_tensor, 'cloud_colors': np.ones_like(pts_sampled)}
-#     cloud = pcd
+    # 3) Build end_points
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    pts_tensor = torch.from_numpy(pts_sampled[np.newaxis].astype(np.float32)).to(device)
+    end_points = {'point_clouds': pts_tensor, 'cloud_colors': np.ones_like(pts_sampled)}
+    cloud = pcd
     
-#     gg = get_grasps(net, end_points)
-#     if collision_thresh > 0:
-#         gg = collision_detection(gg, np.array(cloud.points))
+    gg = get_grasps(net, end_points)
+    print(f"Total number of grasps generated: {len(gg)}", flush=True)
+    if collision_thresh > 0:
+        gg = collision_detection(gg, np.array(cloud.points))
+    print(f"Total number of grasps AFTER collision check: {len(gg)}", flush=True)
+    gg = gg[:num_best_grasps] # Limit to the top num_best_grasps grasps
+    print(f"Visualize the best {len(gg)} grasps", flush=True)
     
-#     # 4) Visualize in Open3D
-#     visualization_in_open3d(gg, cloud)
+    # 4) Visualize in Open3D
+    visualization_in_open3d(gg, cloud)
 
 
-# def get_and_process_data(doc_dir):
-#     # load data
-#     color = np.array(Image.open(os.path.join(doc_dir, 'color.png')), dtype=np.float32) / 255.0
-#     depth = np.array(Image.open(os.path.join(doc_dir, 'depth.png')))
-#     workspace_mask = np.array(Image.open(os.path.join(doc_dir, 'workspace_mask.png')))
-#     meta = scio.loadmat(os.path.join(doc_dir, 'meta.mat'))
-#     intrinsic = meta['intrinsic_matrix']
-#     factor_depth = meta['factor_depth']
+def get_and_process_data(doc_dir):
+    """
+    Function to load the data from the doc_dir and process it to create the point cloud.
+    ----- Input parameters -----
+    :param doc_dir: directory containing the 'color.png', 'depth.png', 'workspace_mask.png', 'meta.mat'
+    ----- Output parameters -----
+    :return: end_points (dict with point cloud and colors), cloud (open3d PointCloud)
+    """
+    # load data
+    color = np.array(Image.open(os.path.join(doc_dir, 'color.png')), dtype=np.float32) / 255.0
+    depth = np.array(Image.open(os.path.join(doc_dir, 'depth.png')))
+    workspace_mask = np.array(Image.open(os.path.join(doc_dir, 'workspace_mask.png')))
+    meta = scio.loadmat(os.path.join(doc_dir, 'meta.mat'))
+    intrinsic = meta['intrinsic_matrix']
+    factor_depth = meta['factor_depth']
 
-#     # generate cloud
-#     camera = CameraInfo(1280.0, 720.0, intrinsic[0][0], intrinsic[1][1], intrinsic[0][2], intrinsic[1][2], factor_depth)
-#     cloud = create_point_cloud_from_depth_image(depth, camera, organized=True)
+    # generate cloud
+    camera = CameraInfo(1280.0, 720.0, intrinsic[0][0], intrinsic[1][1], intrinsic[0][2], intrinsic[1][2], factor_depth)
+    cloud = create_point_cloud_from_depth_image(depth, camera, organized=True)
 
-#     # get valid points
-#     mask = (workspace_mask & (depth > 0))
-#     cloud_masked = cloud[mask]
-#     color_masked = color[mask]
+    # get valid points
+    mask = (workspace_mask & (depth > 0))
+    cloud_masked = cloud[mask]
+    color_masked = color[mask]
 
-#     # sample points
-#     if len(cloud_masked) >= num_point:
-#         idxs = np.random.choice(len(cloud_masked), num_point, replace=False)
-#     else:
-#         idxs1 = np.arange(len(cloud_masked))
-#         idxs2 = np.random.choice(len(cloud_masked), num_point-len(cloud_masked), replace=True)
-#         idxs = np.concatenate([idxs1, idxs2], axis=0)
-#     cloud_sampled = cloud_masked[idxs]
-#     color_sampled = color_masked[idxs]
+    # sample points
+    if len(cloud_masked) >= num_point:
+        idxs = np.random.choice(len(cloud_masked), num_point, replace=False)
+    else:
+        idxs1 = np.arange(len(cloud_masked))
+        idxs2 = np.random.choice(len(cloud_masked), num_point-len(cloud_masked), replace=True)
+        idxs = np.concatenate([idxs1, idxs2], axis=0)
+    cloud_sampled = cloud_masked[idxs]
+    color_sampled = color_masked[idxs]
 
-#     # convert data
-#     cloud = o3d.geometry.PointCloud()
-#     cloud.points = o3d.utility.Vector3dVector(cloud_masked.astype(np.float32))
-#     cloud.colors = o3d.utility.Vector3dVector(color_masked.astype(np.float32))
-#     end_points = dict()
-#     cloud_sampled = torch.from_numpy(cloud_sampled[np.newaxis].astype(np.float32))
-#     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-#     cloud_sampled = cloud_sampled.to(device)
-#     end_points['point_clouds'] = cloud_sampled
-#     end_points['cloud_colors'] = color_sampled
+    # convert data
+    cloud = o3d.geometry.PointCloud()
+    cloud.points = o3d.utility.Vector3dVector(cloud_masked.astype(np.float32))
+    cloud.colors = o3d.utility.Vector3dVector(color_masked.astype(np.float32))
+    end_points = dict()
+    cloud_sampled = torch.from_numpy(cloud_sampled[np.newaxis].astype(np.float32))
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    cloud_sampled = cloud_sampled.to(device)
+    end_points['point_clouds'] = cloud_sampled
+    end_points['cloud_colors'] = color_sampled
 
-#     return end_points, cloud
+    return end_points, cloud
 
 
-# def visualization_in_open3d(gg, cloud):
-#     # Create and visualize the origin frame O(0,0,0)
-#     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
+def visualization_in_open3d(gg, cloud):
+    """
+    Function to visualize the grasps and the point cloud in Open3D.
+    ---------- Input parameters:
+    :param gg: GraspGroup (predicted grasps)
+    :param cloud: open3d PointCloud with the point cloud
+    """
+    # Create and visualize the origin frame O(0,0,0)
+    axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
     
-#     # Create and visualize the ground plane
-#     plane_mesh, plane_grid = create_ground_plane(x_range=(-1.5, 1.5), y_range=(-1.5, 1.5), step=1.0)
+    # Create and visualize the ground plane
+    plane_mesh, plane_grid = create_ground_plane(x_range=(-1.5, 1.5), y_range=(-1.5, 1.5), step=1.0)
     
-#     # Create and visualize the grasps and the gripper
-#     gg.nms()
-#     gg.sort_by_score()
-#     gg = gg[:50]
-#     grippers = gg.to_open3d_geometry_list()
+    # Create and visualize the grasps and the gripper
+    gg.nms()
+    gg.sort_by_score()
+    gg = gg[:50]
+    grippers = gg.to_open3d_geometry_list()
     
-#     # Visualize in Open3D
-#     o3d.visualization.draw_geometries([axis, cloud, *grippers, plane_mesh, plane_grid],
-#         mesh_show_wireframe=False, mesh_show_back_face=True)
+    # Visualize in Open3D
+    o3d.visualization.draw_geometries([axis, cloud, *grippers, plane_mesh, plane_grid],
+        mesh_show_wireframe=False, mesh_show_back_face=True)
 
 
-# if __name__=='__main__':
-#     demo(doc_dir)
-#     # demo_pcd(pcd_path)
+if __name__=='__main__':
+    # demo(doc_dir)
+    demo_pcd(pcd_path)
 #! -- fine: [DEBUG] Functions to be used to debug --

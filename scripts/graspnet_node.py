@@ -15,29 +15,35 @@ class GraspNetNode(Node):
     def __init__(self):
         super().__init__('graspnet_node')
         
-        # #! -- inizio: [DEBUG] Function to be used to debug (demo_pcd) --
+        #! -- inizio: [DEBUG] Function to be used to debug (demo_pcd) --
         # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/trial_simulated_pointcloud.pcd'
-        # graspnet_pipeline.demo_pcd(pcd_path)
-        # #! -- fine: [DEBUG] Function to be used to debug (demo_pcd) --
+        # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/prova_box.pcd'
+        pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/prova_box_5x5x5cm.pcd'
+        # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/prova_box_10000pts.pcd'
+        # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/prova_sphere.pcd'
+        # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/prova_sphere_5cm.pcd'
+        # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/prova_sphere_10000pts.pcd'
+        graspnet_pipeline.demo_pcd(pcd_path)
+        #! -- fine: [DEBUG] Function to be used to debug (demo_pcd) --
         
-        self.subscription = self.create_subscription(
-            PointCloud2, '/octomap_point_cloud_centers', self.pointcloud_callback, 10)
-        self.get_logger().info("GraspNetNode started, listening for point clouds...")
+        # self.subscription = self.create_subscription(
+        #     PointCloud2, '/octomap_point_cloud_centers', self.pointcloud_callback, 10)
+        # self.get_logger().info("GraspNetNode started, listening for point clouds...")
 
-    def pointcloud_callback(self, msg):
-        self.get_logger().info("Received PointCloud2")
+    # def pointcloud_callback(self, msg):
+    #     self.get_logger().info("Received PointCloud2")
 
-        pc = list(pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True))
+    #     pc = list(pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True))
 
-        if len(pc) == 0:
-            self.get_logger().warn("Empty pointcloud received")
-            return
+    #     if len(pc) == 0:
+    #         self.get_logger().warn("Empty pointcloud received")
+    #         return
 
-        # Convert the list of tuples into a 2D array (N, 3)
-        points = np.array([ [x, y, z] for x, y, z in pc ], dtype=np.float32)
+    #     # Convert the list of tuples into a 2D array (N, 3)
+    #     points = np.array([ [x, y, z] for x, y, z in pc ], dtype=np.float32)
 
-        # Run the pipeline without color
-        graspnet_pipeline.run_graspnet_pipeline(points) 
+    #     # Run the pipeline without color
+    #     graspnet_pipeline.run_graspnet_pipeline(points)
 
 
 def main(args=None):

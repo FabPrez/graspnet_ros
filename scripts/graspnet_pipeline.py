@@ -6,6 +6,7 @@ import importlib
 import numpy as np
 import open3d as o3d
 import scipy.io as scio
+import signal
 import time
 import torch
 import threading
@@ -405,10 +406,18 @@ def get_and_process_data(doc_dir):
 def visualization_in_open3d(gg, cloud):
     """
     Function to visualize the grasps and the point cloud in Open3D.
-    ---------- Input parameters:
+    ----- Input parameters -----
     :param gg: GraspGroup (predicted grasps)
     :param cloud: open3d PointCloud with the point cloud
     """
+    global terminate_visualization
+    terminate_visualization = False
+    
+    signal.signal(signal.SIGINT, _on_sigint_visual)
+    
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(window_name='GraspNet Live', width=1280, height=720)
+    
     # Create and visualize the origin frame O(0,0,0)
     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
     
@@ -422,11 +431,35 @@ def visualization_in_open3d(gg, cloud):
     grippers = gg.to_open3d_geometry_list()
     
     # Visualize in Open3D
-    o3d.visualization.draw_geometries([axis, cloud, *grippers, plane_mesh, plane_grid],
-        mesh_show_wireframe=False, mesh_show_back_face=True)
+    vis.add_geometry(axis)
+    vis.add_geometry(cloud)
+    vis.add_geometry(plane_mesh)
+    vis.add_geometry(plane_grid)
+    for g in grippers:
+        vis.add_geometry(g)
+    
+    while True:
+        try:
+            if terminate_visualization:
+                break
+            vis.poll_events()
+            vis.update_renderer()
+        except Exception:
+            break
+        time.sleep(0.01) # Short sleep to avoid 100% CPU usage
+    vis.destroy_window()
+
+
+def _on_sigint_visual(signum, frame):
+    """
+    SIGINT handler to stop the visualization loop.
+    It is registered only when the window is opened.
+    """
+    global terminate_visualization
+    terminate_visualization = True
 
 
 if __name__=='__main__':
     # demo(doc_dir)
     demo_pcd(pcd_path)
-#! -- fine: [DEBUG] Functions to be used to debug --
+#! -- fine: [DEBUG] Functions to be used to debug -- 

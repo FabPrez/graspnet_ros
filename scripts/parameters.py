@@ -25,37 +25,10 @@ import threading
 
 
 #! FOR THE SPHERE
-# # ----- Parameters -----
-# hmin = -0.01 #! OTTIMIZZATO
-# hmax_list = [0.01, 0.02, 0.03, 0.04] #! OTTIMIZZATO
-# num_point = 2000 #! OTTIMIZZATO (changes together with vocel_size)
-# num_view = 300
-# num_angle = 12
-# num_depth = len(hmax_list)
-# cylinder_radius = 0.02 #! OTTIMIZZATO
-
-# # ----- Parameters for gripper -----
-# finger_width = 0.01
-# finger_length = 0.06
-# GRASP_MAX_WIDTH = 0.15
-# GRASP_MIN_WIDTH = 0
-# GRASP_MAX_TOLERANCE = 0.10
-# THRESH_GOOD = 0.7
-# THRESH_BAD = 0.1
-
-# # ----- Parameters for collision detection -----
-# voxel_size = 0.01 #! OTTIMIZZATO (changes together with num_point)
-# collision_thresh = 0.01
-# approach_dist = 0.01 #! OTTIMIZZATO
-
-
-
-
-#! FOR THE BOX (prova_box_5x5x5.pcd)
 # ----- Parameters -----
 hmin = -0.01 #! OTTIMIZZATO
 hmax_list = [0.01, 0.02, 0.03, 0.04] #! OTTIMIZZATO
-num_point = 2000 #! OTTIMIZZATO (changes together with vocel_size)
+num_point = 10000 #! OTTIMIZZATO (changes together with vocel_size)
 num_view = 300
 num_angle = 12
 num_depth = len(hmax_list)
@@ -73,7 +46,34 @@ THRESH_BAD = 0.1
 # ----- Parameters for collision detection -----
 voxel_size = 0.01 #! OTTIMIZZATO (changes together with num_point)
 collision_thresh = 0.01
-approach_dist = 0.05 #! OTTIMIZZATO
+approach_dist = 0.01 #! OTTIMIZZATO
+
+
+
+
+#! FOR THE BOX (prova_box_5x5x5.pcd)
+# # ----- Parameters -----
+# hmin = -0.01 #! OTTIMIZZATO
+# hmax_list = [0.01, 0.02, 0.03, 0.04] #! OTTIMIZZATO
+# num_point = 2000 #! OTTIMIZZATO (changes together with vocel_size)
+# num_view = 300
+# num_angle = 12
+# num_depth = len(hmax_list)
+# cylinder_radius = 0.02 #! OTTIMIZZATO
+
+# # ----- Parameters for gripper -----
+# finger_width = 0.01
+# finger_length = 0.06
+# GRASP_MAX_WIDTH = 0.15
+# GRASP_MIN_WIDTH = 0
+# GRASP_MAX_TOLERANCE = 0.05
+# THRESH_GOOD = 0.7
+# THRESH_BAD = 0.1
+
+# # ----- Parameters for collision detection -----
+# voxel_size = 0.01 #! OTTIMIZZATO (changes together with num_point)
+# collision_thresh = 0.01
+# approach_dist = 0.05 #! OTTIMIZZATO
 
 
 
@@ -89,4 +89,5 @@ latest_gg = None
 pending_update = False
 terminate = False
 lock = threading.Lock()
+terminate_visualization = False
 num_best_grasps = 5

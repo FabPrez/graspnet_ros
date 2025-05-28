@@ -321,11 +321,66 @@ def demo_pcd(pcd_path):
     :return: None
     '''
     net = get_net()
+
     
-    # 1) Read the PCD
-    pcd = o3d.io.read_point_cloud(pcd_path)
+    #! CARICO LA POINTCLOUD DAL FILE .PCD
+    object_pcd = o3d.io.read_point_cloud(pcd_path)
+    object_pts = np.asarray(object_pcd.points, dtype=np.float32)
+    
+    
+    #! CREO PIANO
+    # 2) Trova il punto più alto (massimo z)
+    idx_max_z = np.argmax(object_pts[:, 2])
+    x_max, y_max, z_max = object_pts[idx_max_z]
+    print(f"Punto più alto: (x={x_max:.3f}, y={y_max:.3f}, z={z_max:.3f})")
+
+    # 3) Genera il piano 1×1 m centrato su (x_max, y_max) a z = z_max
+    side_length = 0.20  # (0.20 the best)
+    half_side = side_length / 2.0
+    num_samples = 50 # (50 the best)
+
+    xs = np.linspace(x_max - half_side, x_max + half_side, num_samples)
+    ys = np.linspace(y_max - half_side, y_max + half_side, num_samples)
+    xx, yy = np.meshgrid(xs, ys)
+
+    xx_flat = xx.flatten()
+    yy_flat = yy.flatten()
+    zz_flat = np.full_like(xx_flat, z_max)
+
+    plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
+
+    plane_pcd = o3d.geometry.PointCloud()
+    plane_pcd.points = o3d.utility.Vector3dVector(plane_pts)
+    print(f"Piano generato con {plane_pts.shape[0]} punti a z = {z_max:.3f}")
+    
+    
+    #! UNISCO LE DUE POINTCLOUDS
+    all_pts = np.vstack([object_pts, plane_pts])
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(all_pts)
     pts = np.asarray(pcd.points, dtype=np.float32)
     print(f"-> loaded pointcloud {pcd_path} with {np.asarray(pcd.points).shape[0]} points", flush=True)
+    
+    
+    #! SPOSTARE LA POINTCLOUD
+    # SHIFT THE POINTCLOUD TO THE ORIGIN
+    # pts -= np.mean(pts, axis=0)  # Center the point cloud at the origin
+    
+    # SHIFT THE POINTCLOUD ALONG THE X-AXIS SO THAT THE CENTER IS IN [0.5, 0, 0]
+    # pts[:, 0] -= 0.5  # Shift the point cloud along the X-axis by 0.5 units
+    # pts[:, 0] += 0.8  # Shift the point cloud along the X-axis by 0.5 units
+    
+    # SHIFT THE POINTCLOUD ALONG THE Y-AXIS SO THAT THE CENTER IS IN [0, 0.5, 0]
+    # pts[:, 1] -= 0.5  # Shift the point cloud along the Y-axis by 0.5 units
+    # pts[:, 1] += 0.3  # Shift the point cloud along the Y-axis by 0.5 units
+    
+    # SHIFT THE POINTCLOUD ALONG THE Z-AXIS SO THAT THE CENTER IS IN [0, 0, 0.5]
+    # pts[:, 2] -= 0.5  # Shift the point cloud along the Z-axis by 0.5 units
+    # pts[:, 2] += 0.8  # Shift the point cloud along the Z-axis by 0.5 units
+    
+    # # OVERWRITE THE PCD WITH THE SHIFTED POINTS
+    # pcd.points = o3d.utility.Vector3dVector(pts)
+    
     
     # 2) Sample exactly as in get_and_process_data()
     if len(pts) >= num_point:
@@ -460,6 +515,6 @@ def _on_sigint_visual(signum, frame):
 
 
 if __name__=='__main__':
-    # demo(doc_dir)
-    demo_pcd(pcd_path)
+    demo(doc_dir)
+    # demo_pcd(pcd_path)
 #! -- fine: [DEBUG] Functions to be used to debug -- 

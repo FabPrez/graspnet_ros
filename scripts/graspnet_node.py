@@ -65,15 +65,14 @@ def main(args=None):
     ros_thread.start()
     
     # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/trial_simulated_pointcloud.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_10000pts.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_10000pts.pcd'
+    pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_10000pts.pcd'
+    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_10000pts_neg.pcd'
+    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_10000pts.pcd'
+    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_10000pts.pcd'
     # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_10000pts.pcd'
     # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_5000pts.pcd'
     # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_1000pts.pcd'
-    pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_100pts.pcd'
+    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_100pts.pcd'
     graspnet_pipeline.demo_pcd(pcd_path)
     
     node.destroy_node()

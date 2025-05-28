@@ -312,32 +312,32 @@ def demo(doc_dir):
     
 
 def demo_pcd(pcd_path):
-    '''
+    """
     Function to be used to DEBUG.
     Demo to visualize the grasps from the pcd file
     ----- Input parameters -----
     :param pcd_path: path to the pcd file
     ----- Output parameters -----
     :return: None
-    '''
+    """
     net = get_net()
 
     
     #! CARICO LA POINTCLOUD DAL FILE .PCD
     object_pcd = o3d.io.read_point_cloud(pcd_path)
     object_pts = np.asarray(object_pcd.points, dtype=np.float32)
+    print(f"-> loaded pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
     
     
     #! CREO PIANO
     # 2) Trova il punto più alto (massimo z)
     idx_max_z = np.argmax(object_pts[:, 2])
     x_max, y_max, z_max = object_pts[idx_max_z]
-    print(f"Punto più alto: (x={x_max:.3f}, y={y_max:.3f}, z={z_max:.3f})")
 
-    # 3) Genera il piano 1×1 m centrato su (x_max, y_max) a z = z_max
-    side_length = 0.20  # (0.20 the best)
+    # 3) Genera il piano centrato su (x_max, y_max) a z = z_max
+    side_length = 0.10
     half_side = side_length / 2.0
-    num_samples = 50 # (50 the best)
+    num_samples = 10
 
     xs = np.linspace(x_max - half_side, x_max + half_side, num_samples)
     ys = np.linspace(y_max - half_side, y_max + half_side, num_samples)
@@ -351,7 +351,7 @@ def demo_pcd(pcd_path):
 
     plane_pcd = o3d.geometry.PointCloud()
     plane_pcd.points = o3d.utility.Vector3dVector(plane_pts)
-    print(f"Piano generato con {plane_pts.shape[0]} punti a z = {z_max:.3f}")
+    print(f"-> generated plane with {plane_pts.shape[0]} points")
     
     
     #! UNISCO LE DUE POINTCLOUDS
@@ -359,27 +359,7 @@ def demo_pcd(pcd_path):
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(all_pts)
     pts = np.asarray(pcd.points, dtype=np.float32)
-    print(f"-> loaded pointcloud {pcd_path} with {np.asarray(pcd.points).shape[0]} points", flush=True)
-    
-    
-    #! SPOSTARE LA POINTCLOUD
-    # SHIFT THE POINTCLOUD TO THE ORIGIN
-    # pts -= np.mean(pts, axis=0)  # Center the point cloud at the origin
-    
-    # SHIFT THE POINTCLOUD ALONG THE X-AXIS SO THAT THE CENTER IS IN [0.5, 0, 0]
-    # pts[:, 0] -= 0.5  # Shift the point cloud along the X-axis by 0.5 units
-    # pts[:, 0] += 0.8  # Shift the point cloud along the X-axis by 0.5 units
-    
-    # SHIFT THE POINTCLOUD ALONG THE Y-AXIS SO THAT THE CENTER IS IN [0, 0.5, 0]
-    # pts[:, 1] -= 0.5  # Shift the point cloud along the Y-axis by 0.5 units
-    # pts[:, 1] += 0.3  # Shift the point cloud along the Y-axis by 0.5 units
-    
-    # SHIFT THE POINTCLOUD ALONG THE Z-AXIS SO THAT THE CENTER IS IN [0, 0, 0.5]
-    # pts[:, 2] -= 0.5  # Shift the point cloud along the Z-axis by 0.5 units
-    # pts[:, 2] += 0.8  # Shift the point cloud along the Z-axis by 0.5 units
-    
-    # # OVERWRITE THE PCD WITH THE SHIFTED POINTS
-    # pcd.points = o3d.utility.Vector3dVector(pts)
+    print(f"-> generating grasps on pointcloud with {pts.shape[0]} points for both OBJECT and PLANE", flush=True)
     
     
     # 2) Sample exactly as in get_and_process_data()
@@ -397,6 +377,7 @@ def demo_pcd(pcd_path):
     end_points = {'point_clouds': pts_tensor, 'cloud_colors': np.ones_like(pts_sampled)}
     cloud = pcd
     
+    # 4) Generate the grasps
     gg = get_grasps(net, end_points)
     print(f"Total number of grasps generated: {len(gg)}", flush=True)
     if collision_thresh > 0:
@@ -405,8 +386,11 @@ def demo_pcd(pcd_path):
     gg = gg[:num_best_grasps] # Limit to the top num_best_grasps grasps
     print(f"Visualize the best {len(gg)} grasps", flush=True)
     
-    # 4) Visualize in Open3D
+    # 5) Visualize in Open3D
     visualization_in_open3d(gg, cloud)
+
+
+
 
 
 def get_and_process_data(doc_dir):

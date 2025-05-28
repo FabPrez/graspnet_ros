@@ -25,7 +25,7 @@ import threading
 # ----- Parameters -----
 hmin = -0.01
 hmax_list = [0.01, 0.02, 0.03, 0.04]
-num_point = 500
+num_point = 10000
 num_view = 300
 num_angle = 12
 num_depth = len(hmax_list)
@@ -41,7 +41,7 @@ THRESH_GOOD = 0.7
 THRESH_BAD = 0.1
 
 # ----- Parameters for collision detection -----
-voxel_size = 0.005
+voxel_size = 0.01
 collision_thresh = 0.01
 approach_dist = 0.01
 

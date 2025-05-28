@@ -272,7 +272,7 @@ def run_graspnet_pipeline(points):
         idxs2 = np.random.choice(len(points), num_point - len(points), replace=True)
         idxs = np.concatenate([idxs1, idxs2], axis=0)
     cloud_sampled = points[idxs]
-    color_sampled = np.ones_like(cloud_sampled, dtype=np.float32) * 0.5 # Colori fittizi (grigio)
+    color_sampled = np.ones_like(cloud_sampled, dtype=np.float32) * 0.5  # Dummy colors (gray)
 
     # Create the dictionary end_points (pointcloud + colors)
     tensor_points = torch.from_numpy(cloud_sampled[np.newaxis].astype(np.float32)).to(device)
@@ -323,21 +323,29 @@ def demo_pcd(pcd_path):
     net = get_net()
 
     
-    #! CARICO LA POINTCLOUD DAL FILE .PCD
-    object_pcd = o3d.io.read_point_cloud(pcd_path)
-    object_pts = np.asarray(object_pcd.points, dtype=np.float32)
-    print(f"-> loaded pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
+    # #! LOAD POINT CLOUD FROM .PCD FILE (or create it afterwards)
+    # object_pcd = o3d.io.read_point_cloud(pcd_path)
+    # object_pts = np.asarray(object_pcd.points, dtype=np.float32)
+    # print(f"-> loaded pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
     
     
-    #! CREO PIANO
-    # 2) Trova il punto più alto (massimo z)
+    #! CREATE THE POINTCLOUD FOR THE OBJECT (box)
+    center = (0.5, 0, 0.5)
+    cube_size = 0.05
+    N = 10000
+    object_pts = create_cube_pointcloud(center, cube_size, N).astype(np.float32)
+    print(f"-> created pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
+    
+    
+    #! CREATE THE POINTCLOUD FOR THE PLANE
+    # Find the highest point (maximum z)
     idx_max_z = np.argmax(object_pts[:, 2])
     x_max, y_max, z_max = object_pts[idx_max_z]
 
-    # 3) Genera il piano centrato su (x_max, y_max) a z = z_max
-    side_length = 0.10
+    # Generate the plane centered at (x_max, y_max) at z = z_max
+    side_length = 0.20
     half_side = side_length / 2.0
-    num_samples = 10
+    num_samples = 20
 
     xs = np.linspace(x_max - half_side, x_max + half_side, num_samples)
     ys = np.linspace(y_max - half_side, y_max + half_side, num_samples)
@@ -354,7 +362,7 @@ def demo_pcd(pcd_path):
     print(f"-> generated plane with {plane_pts.shape[0]} points")
     
     
-    #! UNISCO LE DUE POINTCLOUDS
+    #! COMBINE THE TWO POINTCLOUDS
     all_pts = np.vstack([object_pts, plane_pts])
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(all_pts)
@@ -390,7 +398,57 @@ def demo_pcd(pcd_path):
     visualization_in_open3d(gg, cloud)
 
 
+def create_cube_pointcloud(center, size, N):
+    """
+    Creates a NumPy point cloud of a cube with side `size` (meters),
+    centered at `center` (3D tuple or array), with `N` points
+    uniformly distributed on the outer surfaces.
+    """
+    cx, cy, cz = center
+    half = size / 2.0
 
+    # Calculate how many points per each of the 6 faces
+    base_count = N // 6
+    remainder = N - base_count * 6
+    face_counts = [base_count + 1 if i < remainder else base_count for i in range(6)]
+    
+    faces = []
+    # Two faces with x fixed at cx ± half
+    faces.append(sample_face(axis='x', coord_value=cx-half, center_other1=cy, center_other2=cz, size=size, count=face_counts[0]))
+    faces.append(sample_face(axis='x', coord_value=cx+half, center_other1=cy, center_other2=cz, size=size, count=face_counts[1]))
+    # Two faces with y fixed at cy ± half
+    faces.append(sample_face(axis='y', coord_value=cy-half, center_other1=cx, center_other2=cz, size=size, count=face_counts[2]))
+    faces.append(sample_face(axis='y', coord_value=cy+half, center_other1=cx, center_other2=cz, size=size, count=face_counts[3]))
+    # Two faces with z fixed at cz ± half
+    faces.append(sample_face(axis='z', coord_value=cz-half, center_other1=cx, center_other2=cy, size=size, count=face_counts[4]))
+    faces.append(sample_face(axis='z', coord_value=cz+half, center_other1=cx, center_other2=cy, size=size, count=face_counts[5]))
+    
+    # Combine the 6 faces and return points
+    points = np.vstack(faces)
+    return points
+
+
+def sample_face(axis, coord_value, center_other1, center_other2, size, count):
+    """
+    Samples `count` uniform points on a square face of side `size`,
+    where the `axis` coordinate is fixed at `coord_value`.
+    """
+    u = np.random.uniform(-size/2, size/2, count)
+    v = np.random.uniform(-size/2, size/2, count)
+    pts = np.zeros((count, 3))
+    if axis == 'x':
+        pts[:, 0] = coord_value
+        pts[:, 1] = center_other1 + u
+        pts[:, 2] = center_other2 + v
+    elif axis == 'y':
+        pts[:, 0] = center_other1 + u
+        pts[:, 1] = coord_value
+        pts[:, 2] = center_other2 + v
+    elif axis == 'z':
+        pts[:, 0] = center_other1 + u
+        pts[:, 1] = center_other2 + v
+        pts[:, 2] = coord_value
+    return pts
 
 
 def get_and_process_data(doc_dir):
@@ -497,8 +555,4 @@ def _on_sigint_visual(signum, frame):
     global terminate_visualization
     terminate_visualization = True
 
-
-if __name__=='__main__':
-    demo(doc_dir)
-    # demo_pcd(pcd_path)
-#! -- fine: [DEBUG] Functions to be used to debug -- 
+#! -- fine: [DEBUG] Functions to be used to debug --

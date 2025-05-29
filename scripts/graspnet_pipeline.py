@@ -330,9 +330,9 @@ def demo_pcd(pcd_path):
     
     
     #! CREATE THE POINTCLOUD FOR THE OBJECT (box)
-    center = (0.5, 0, 0.5)
-    cube_size = 0.05
-    N = 10000
+    center = (0.5, 0, 0.5) # Center of the cube in meters
+    cube_size = 0.05 # Size of the cube in meters
+    N = 5000 # Number of points to sample on the cube surface
     object_pts = create_cube_pointcloud(center, cube_size, N).astype(np.float32)
     print(f"-> created pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
     
@@ -340,15 +340,15 @@ def demo_pcd(pcd_path):
     #! CREATE THE POINTCLOUD FOR THE PLANE
     # Find the highest point (maximum z)
     idx_max_z = np.argmax(object_pts[:, 2])
-    x_max, y_max, z_max = object_pts[idx_max_z]
+    z_max = object_pts[idx_max_z, 2]
 
-    # Generate the plane centered at (x_max, y_max) at z = z_max
+    # Generate the plane centered at C(center[0], center[1]) at a height z = z_max
     side_length = 0.20
     half_side = side_length / 2.0
     num_samples = 20
 
-    xs = np.linspace(x_max - half_side, x_max + half_side, num_samples)
-    ys = np.linspace(y_max - half_side, y_max + half_side, num_samples)
+    xs = np.linspace(center[0] - half_side, center[0] + half_side, num_samples)
+    ys = np.linspace(center[1] - half_side, center[1] + half_side, num_samples)
     xx, yy = np.meshgrid(xs, ys)
 
     xx_flat = xx.flatten()
@@ -367,7 +367,6 @@ def demo_pcd(pcd_path):
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(all_pts)
     pts = np.asarray(pcd.points, dtype=np.float32)
-    print(f"-> generating grasps on pointcloud with {pts.shape[0]} points for both OBJECT and PLANE", flush=True)
     
     
     # 2) Sample exactly as in get_and_process_data()

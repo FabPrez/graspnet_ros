@@ -25,7 +25,7 @@ import threading
 # ----- Parameters -----
 hmin = -0.01
 hmax_list = [0.01, 0.02, 0.03, 0.04]
-num_point = 10000
+num_point = 2000
 num_view = 300
 num_angle = 12
 num_depth = len(hmax_list)
@@ -34,14 +34,14 @@ cylinder_radius = 0.02
 # ----- Parameters for gripper -----
 finger_width = 0.01
 finger_length = 0.06
-GRASP_MAX_WIDTH = 0.15
+GRASP_MAX_WIDTH = 0.08
 GRASP_MIN_WIDTH = 0
 GRASP_MAX_TOLERANCE = 0.05
 THRESH_GOOD = 0.7
 THRESH_BAD = 0.1
 
 # ----- Parameters for collision detection -----
-voxel_size = 0.01
+voxel_size = 0.005
 collision_thresh = 0.01
 approach_dist = 0.01
 
@@ -58,4 +58,4 @@ pending_update = False
 terminate = False
 lock = threading.Lock()
 terminate_visualization = False
-num_best_grasps = 5
+num_best_grasps = 10

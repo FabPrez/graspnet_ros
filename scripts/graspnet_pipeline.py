@@ -250,28 +250,61 @@ def visualizer_loop():
         vis.destroy_window()
 
 
-def run_graspnet_pipeline(points):
+def run_graspnet_pipeline(object_pts):
     """
     This function is called for each new pointcloud received (numpy array Nx3).
     It computes the grasps and calls update_visualization() to update the window.
     ----- Input parameters -----
-    :param points: np.ndarray of shape (N, 3) with XYZ coordinates
+    :param object_pts: np.ndarray of shape (N, 3) with XYZ coordinates
     ----- Output parameters -----
     :return: GraspGroup (predicted grasps)
     """
     global latest_points, latest_gg, pending_update
     
+    # TODO: manually add the plane UNDER the objects
+    # Find the lowest point (minimum z)
+    idx_max_z = np.argmax(object_pts[:, 2])
+    z_max = object_pts[idx_max_z, 2]
+
+    #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_max
+    # Compute the center
+    center = np.mean(object_pts, axis=0)
+    side_length = 0.20
+    half_side = side_length / 2.0
+    num_samples = 20
+
+    xs = np.linspace(center[0] - half_side, center[0] + half_side, num_samples)
+    ys = np.linspace(center[1] - half_side, center[1] + half_side, num_samples)
+    xx, yy = np.meshgrid(xs, ys)
+
+    xx_flat = xx.flatten()
+    yy_flat = yy.flatten()
+    zz_flat = np.full_like(xx_flat, z_max)
+
+    plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
+
+    plane_pcd = o3d.geometry.PointCloud()
+    plane_pcd.points = o3d.utility.Vector3dVector(plane_pts)
+    print(f"-> generated plane with {plane_pts.shape[0]} points")
+    
+    
+    #! COMBINE THE TWO POINTCLOUDS
+    all_pts = np.vstack([object_pts, plane_pts])
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(all_pts)
+    
+    
     # Load the graspnet model
     net = get_net()
     
     # Sampling to get num_point points
-    if len(points) >= num_point:
-        idxs = np.random.choice(len(points), num_point, replace=False)
+    if len(all_pts) >= num_point:
+        idxs = np.random.choice(len(all_pts), num_point, replace=False)
     else:
-        idxs1 = np.arange(len(points))
-        idxs2 = np.random.choice(len(points), num_point - len(points), replace=True)
+        idxs1 = np.arange(len(all_pts))
+        idxs2 = np.random.choice(len(all_pts), num_point - len(all_pts), replace=True)
         idxs = np.concatenate([idxs1, idxs2], axis=0)
-    cloud_sampled = points[idxs]
+    cloud_sampled = all_pts[idxs]
     color_sampled = np.ones_like(cloud_sampled, dtype=np.float32) * 0.5  # Dummy colors (gray)
 
     # Create the dictionary end_points (pointcloud + colors)
@@ -284,11 +317,11 @@ def run_graspnet_pipeline(points):
     # Compute the grasps
     gg = get_grasps(net, end_points)
     if collision_thresh > 0:
-        gg = collision_detection(gg, points)
+        gg = collision_detection(gg, all_pts)
     
     # Put the results in the shared buffer, signaling the visualization thread
     with lock:
-        latest_points = points.copy()
+        latest_points = all_pts.copy()
         latest_gg = gg
         pending_update = True
 
@@ -323,32 +356,44 @@ def demo_pcd(pcd_path):
     net = get_net()
 
     
-    # #! LOAD POINT CLOUD FROM .PCD FILE (or create it afterwards)
-    # object_pcd = o3d.io.read_point_cloud(pcd_path)
-    # object_pts = np.asarray(object_pcd.points, dtype=np.float32)
-    # print(f"-> loaded pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
+    #! LOAD POINT CLOUD FROM .PCD FILE (or create it afterwards)
+    object_pcd = o3d.io.read_point_cloud(pcd_path)
+    object_pts = np.asarray(object_pcd.points, dtype=np.float32)
+    print(f"-> loaded pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
     
     
-    #! CREATE THE POINTCLOUD FOR THE OBJECT (box)
-    center = (0.5, 0, 0.5) # Center of the cube in meters
-    cube_size = 0.05 # Size of the cube in meters
-    N = 5000 # Number of points to sample on the cube surface
-    object_pts = create_cube_pointcloud(center, cube_size, N).astype(np.float32)
-    print(f"-> created pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
-    
-    
-    #! CREATE THE POINTCLOUD FOR THE PLANE
-    # Find the highest point (maximum z)
+    #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_max
+    # Find the lowest point (maximum z)
     idx_max_z = np.argmax(object_pts[:, 2])
     z_max = object_pts[idx_max_z, 2]
-
-    # Generate the plane centered at C(center[0], center[1]) at a height z = z_max
-    side_length = 0.20
-    half_side = side_length / 2.0
-    num_samples = 20
-
-    xs = np.linspace(center[0] - half_side, center[0] + half_side, num_samples)
-    ys = np.linspace(center[1] - half_side, center[1] + half_side, num_samples)
+    
+    # Compute the center
+    center = np.mean(object_pts, axis=0)
+    
+    # Compute the plane parameters
+    N = 300 # number of points for the plane cloud
+    min_x, max_x = np.min(object_pts[:, 0]), np.max(object_pts[:, 0])
+    min_y, max_y = np.min(object_pts[:, 1]), np.max(object_pts[:, 1])
+    dx = max_x - min_x
+    dy = max_y - min_y
+    if (dx < dy):
+        side_length_x = 3.0 * dx
+        side_length_y = 1.5 * dy
+    elif(dx == dy):
+        side_length_x = 1.5 * dx
+        side_length_y = 1.5 * dy 
+    else:
+        side_length_x = 1.5 * dx
+        side_length_y = 3.0 * dy
+    
+    ratio = side_length_x / side_length_y
+    num_x = int(round(np.sqrt(N * ratio)))
+    num_x = max(num_x, 2)
+    num_y = int(np.ceil(N / num_x))
+    num_y = max(num_y, 2)
+    
+    xs = np.linspace(center[0] - side_length_x / 2.0, center[0] + side_length_x / 2.0, num_x)
+    ys = np.linspace(center[1] - side_length_y / 2.0, center[1] + side_length_y / 2.0, num_y)
     xx, yy = np.meshgrid(xs, ys)
 
     xx_flat = xx.flatten()
@@ -366,17 +411,16 @@ def demo_pcd(pcd_path):
     all_pts = np.vstack([object_pts, plane_pts])
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(all_pts)
-    pts = np.asarray(pcd.points, dtype=np.float32)
     
     
     # 2) Sample exactly as in get_and_process_data()
-    if len(pts) >= num_point:
-        idxs = np.random.choice(len(pts), num_point, replace=False)
+    if len(all_pts) >= num_point:
+        idxs = np.random.choice(len(all_pts), num_point, replace=False)
     else:
-        idxs1 = np.arange(len(pts))
-        idxs2 = np.random.choice(len(pts), num_point - len(pts), replace=True)
+        idxs1 = np.arange(len(all_pts))
+        idxs2 = np.random.choice(len(all_pts), num_point - len(all_pts), replace=True)
         idxs = np.concatenate([idxs1, idxs2], axis=0)
-    pts_sampled = pts[idxs]
+    pts_sampled = all_pts[idxs]
     
     # 3) Build end_points
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

@@ -66,8 +66,7 @@ def main(args=None):
     
     # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/trial_simulated_pointcloud_clutter.pcd'
     # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/trial_simulated_pointcloud_single.pcd"
-    
-    pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/pointcloud_rect_30x5x5_2000.pcd"
+    pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/pointcloud_rect_30x5x5_2000pts.pcd"
     
     # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_10000pts.pcd'
     # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_5000pts.pcd'

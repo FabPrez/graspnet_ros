@@ -264,9 +264,9 @@ def run_graspnet_pipeline(object_pts):
     # TODO: manually add the plane UNDER the objects
     # Find the lowest point (minimum z)
     idx_max_z = np.argmax(object_pts[:, 2])
-    z_max = object_pts[idx_max_z, 2]
+    z_min = object_pts[idx_max_z, 2]
 
-    #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_max
+    #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_min
     # Compute the center
     center = np.mean(object_pts, axis=0)
     side_length = 0.20
@@ -279,7 +279,7 @@ def run_graspnet_pipeline(object_pts):
 
     xx_flat = xx.flatten()
     yy_flat = yy.flatten()
-    zz_flat = np.full_like(xx_flat, z_max)
+    zz_flat = np.full_like(xx_flat, z_min)
 
     plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
 
@@ -326,6 +326,9 @@ def run_graspnet_pipeline(object_pts):
         pending_update = True
 
 
+
+
+
 #! -- inizio: [DEBUG] Functions to be used to debug --
 def demo(doc_dir):
     """
@@ -362,10 +365,10 @@ def demo_pcd(pcd_path):
     print(f"-> loaded pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
     
     
-    #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_max
-    # Find the lowest point (maximum z)
-    idx_max_z = np.argmax(object_pts[:, 2])
-    z_max = object_pts[idx_max_z, 2]
+    #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_min
+    # Find the lowest point (minimum z)
+    idx_min_z = np.argmin(object_pts[:, 2])
+    z_min = object_pts[idx_min_z, 2]
     
     # Compute the center
     center = np.mean(object_pts, axis=0)
@@ -398,7 +401,7 @@ def demo_pcd(pcd_path):
 
     xx_flat = xx.flatten()
     yy_flat = yy.flatten()
-    zz_flat = np.full_like(xx_flat, z_max)
+    zz_flat = np.full_like(xx_flat, z_min)
 
     plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
 
@@ -439,59 +442,6 @@ def demo_pcd(pcd_path):
     
     # 5) Visualize in Open3D
     visualization_in_open3d(gg, cloud)
-
-
-def create_cube_pointcloud(center, size, N):
-    """
-    Creates a NumPy point cloud of a cube with side `size` (meters),
-    centered at `center` (3D tuple or array), with `N` points
-    uniformly distributed on the outer surfaces.
-    """
-    cx, cy, cz = center
-    half = size / 2.0
-
-    # Calculate how many points per each of the 6 faces
-    base_count = N // 6
-    remainder = N - base_count * 6
-    face_counts = [base_count + 1 if i < remainder else base_count for i in range(6)]
-    
-    faces = []
-    # Two faces with x fixed at cx ± half
-    faces.append(sample_face(axis='x', coord_value=cx-half, center_other1=cy, center_other2=cz, size=size, count=face_counts[0]))
-    faces.append(sample_face(axis='x', coord_value=cx+half, center_other1=cy, center_other2=cz, size=size, count=face_counts[1]))
-    # Two faces with y fixed at cy ± half
-    faces.append(sample_face(axis='y', coord_value=cy-half, center_other1=cx, center_other2=cz, size=size, count=face_counts[2]))
-    faces.append(sample_face(axis='y', coord_value=cy+half, center_other1=cx, center_other2=cz, size=size, count=face_counts[3]))
-    # Two faces with z fixed at cz ± half
-    faces.append(sample_face(axis='z', coord_value=cz-half, center_other1=cx, center_other2=cy, size=size, count=face_counts[4]))
-    faces.append(sample_face(axis='z', coord_value=cz+half, center_other1=cx, center_other2=cy, size=size, count=face_counts[5]))
-    
-    # Combine the 6 faces and return points
-    points = np.vstack(faces)
-    return points
-
-
-def sample_face(axis, coord_value, center_other1, center_other2, size, count):
-    """
-    Samples `count` uniform points on a square face of side `size`,
-    where the `axis` coordinate is fixed at `coord_value`.
-    """
-    u = np.random.uniform(-size/2, size/2, count)
-    v = np.random.uniform(-size/2, size/2, count)
-    pts = np.zeros((count, 3))
-    if axis == 'x':
-        pts[:, 0] = coord_value
-        pts[:, 1] = center_other1 + u
-        pts[:, 2] = center_other2 + v
-    elif axis == 'y':
-        pts[:, 0] = center_other1 + u
-        pts[:, 1] = coord_value
-        pts[:, 2] = center_other2 + v
-    elif axis == 'z':
-        pts[:, 0] = center_other1 + u
-        pts[:, 1] = center_other2 + v
-        pts[:, 2] = coord_value
-    return pts
 
 
 def get_and_process_data(doc_dir):

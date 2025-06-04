@@ -64,24 +64,33 @@ def main(args=None):
     ros_thread = threading.Thread(target=rclpy.spin, args=(node,), daemon=True)
     ros_thread.start()
     
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/trial_simulated_pointcloud_clutter.pcd'
-    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/trial_simulated_pointcloud_single.pcd"
-    pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/pointcloud_rect_30x5x5_2000pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/gazebo_rectangular_box_res_005.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/gazebo_sphere_res_005.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/gazebo_cylinder_res_005.pcd"
     
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_10000pts.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_5000pts.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_2000pts.pcd'
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/gazebo_rectangular_box_res_01_PARTIAL1.pcd"
+    pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/gazebo_rectangular_box_res_01_PARTIAL2.pcd"
     
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_1000pts.pcd'
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/gazebo_rectangular_box_res_01.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/gazebo_sphere_res_01.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/gazebo_cylinder_res_01.pcd"
     
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_600pts.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_400pts.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_200pts.pcd'
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/pointcloud_rect_30x5x5cm_2000pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/pointcloud_cylinder_5x30cm_2000pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/pointcloud_sphere_5cm_2000pts.pcd"
     
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_10000pts.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_5000pts.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_1000pts.pcd'
-    # pcd_path = '/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_100pts.pcd'
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_10000pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_5000pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_2000pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_1000pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_600pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_400pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/box_5x5x5cm_200pts.pcd"
+    
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_10000pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_5000pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_1000pts.pcd"
+    # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_100pts.pcd"
     graspnet_pipeline.demo_pcd(pcd_path)
     
     node.destroy_node()

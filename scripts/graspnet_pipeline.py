@@ -365,13 +365,10 @@ def demo_pcd(pcd_path):
     print(f"-> loaded pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
     
     
-    #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_min
-    # Find the lowest point (minimum z)
-    idx_min_z = np.argmin(object_pts[:, 2])
-    z_min = object_pts[idx_min_z, 2]
-    
+    #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_plane
     # Compute the center
     center = np.mean(object_pts, axis=0)
+    z_plane = 0.50
     
     # Compute the plane parameters
     N = 400 # number of points for the plane cloud
@@ -401,7 +398,7 @@ def demo_pcd(pcd_path):
 
     xx_flat = xx.flatten()
     yy_flat = yy.flatten()
-    zz_flat = np.full_like(xx_flat, z_min)
+    zz_flat = np.full_like(xx_flat, z_plane)
 
     plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
 

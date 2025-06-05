@@ -4,7 +4,9 @@ import sys
 import numpy as np
 import rclpy
 import sensor_msgs_py.point_cloud2 as pc2
+from scipy.spatial.transform import Rotation
 import threading
+from geometry_msgs.msg import Pose, PoseArray, Point, Quaternion
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
 
@@ -91,8 +93,31 @@ def main(args=None):
     # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_5000pts.pcd"
     # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_1000pts.pcd"
     # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_100pts.pcd"
-    gg = graspnet_pipeline.demo_pcd(pcd_path)
-    gg_history = gg[0] # Save the best grasp only
+    
+    # TODO: da modificare il ciclo for a seconda di quante iterazioni vogliamo fare
+    N = np.arange(1, 10, 1)
+    gg_history = []
+    pose_array = PoseArray()
+    
+    for i in N:
+        print(f" ===== Iteration n.{i} ===== ", flush=True)
+        gg = graspnet_pipeline.demo_pcd(pcd_path)
+        gg_history.append(gg[0]) # Save the best grasp only
+        
+        R = np.array(gg[0].rotation_matrix)
+        q = Rotation.from_matrix(R)
+        q_xyzw = q.as_quat()
+    
+        p = Pose()
+        p.position = Point(x = float(gg[0].translation[0]), y = float(gg[0].translation[1]), z = float(gg[0].translation[2]))
+        p.orientation = Quaternion(x = float(q_xyzw[0]), y = float(q_xyzw[1]), z = float(q_xyzw[2]), w = float(q_xyzw[3]))
+        
+        print(f"translation: ", p.position, flush=True)
+        print(f"rotation: ", p.orientation, flush=True)
+        
+        pose_array.poses.append(p)
+        
+        
     
     node.destroy_node()
     rclpy.shutdown()

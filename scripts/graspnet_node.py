@@ -91,7 +91,8 @@ def main(args=None):
     # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_5000pts.pcd"
     # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_1000pts.pcd"
     # pcd_path = "/home/vignofede/grasp_NBV_ws/saved_pointclouds/sphere_5cm_100pts.pcd"
-    graspnet_pipeline.demo_pcd(pcd_path)
+    gg = graspnet_pipeline.demo_pcd(pcd_path)
+    gg_history = gg[0] # Save the best grasp only
     
     node.destroy_node()
     rclpy.shutdown()

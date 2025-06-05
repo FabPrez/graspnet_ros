@@ -3,6 +3,7 @@ import os
 import sys
 import argparse
 import importlib
+import copy
 import numpy as np
 import open3d as o3d
 import scipy.io as scio
@@ -330,23 +331,6 @@ def run_graspnet_pipeline(object_pts):
 
 
 #! -- inizio: [DEBUG] Functions to be used to debug --
-def demo(doc_dir):
-    """
-    Function to be used to DEBUG.
-    Demo to visualize the grasps from the 'color.png', 'depth.png', 'workspace_mask.png' in doc_dir
-    ----- Input parameters -----
-    :param doc_dir: directory containing the 'color.png', 'depth.png', 'workspace_mask.png'
-    ----- Output parameters -----
-    :return: None
-    """
-    net = get_net()
-    end_points, cloud = get_and_process_data(doc_dir)
-    gg = get_grasps(net, end_points)
-    if collision_thresh > 0:
-        gg = collision_detection(gg, np.array(cloud.points))
-    visualization_in_open3d(gg, cloud)
-    
-
 def demo_pcd(pcd_path):
     """
     Function to be used to DEBUG.
@@ -359,9 +343,8 @@ def demo_pcd(pcd_path):
     net = get_net()
 
     
-    #! LOAD POINT CLOUD FROM .PCD FILE (or create it afterwards)
-    object_pcd = o3d.io.read_point_cloud(pcd_path)
-    object_pts = np.asarray(object_pcd.points, dtype=np.float32)
+    #! LOAD POINT CLOUD FROM .PCD FILE
+    object_pts = np.asarray(o3d.io.read_point_cloud(pcd_path, remove_nan_points=True, remove_infinite_points=True).points, dtype=np.float32)
     print(f"-> loaded pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
     
     
@@ -401,33 +384,39 @@ def demo_pcd(pcd_path):
     zz_flat = np.full_like(xx_flat, z_plane)
 
     plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
-
-    plane_pcd = o3d.geometry.PointCloud()
-    plane_pcd.points = o3d.utility.Vector3dVector(plane_pts)
     print(f"-> generated plane with {plane_pts.shape[0]} points")
     
     
     #! COMBINE THE TWO POINTCLOUDS
-    all_pts = np.vstack([object_pts, plane_pts])
+    pts_up = np.vstack([object_pts, plane_pts])
+    pcd_up = o3d.geometry.PointCloud()
+    pcd_up.points = o3d.utility.Vector3dVector(pts_up)
     
     
     #! ROTATE THE TWO POINTCLOUDS
+    result = rotate_pointcloud_180(pts_up, center)
     # Extract the rotated pointcloud only
-    all_pts_rotated, _, _, _ = rotate_pointcloud_180(all_pts, center)
-    # Extract the axis of rotation only
-    _, rotation_axis, min_proj, max_proj = rotate_pointcloud_180(all_pts, center)
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(all_pts_rotated)
+    pts_down = result[0]
+    # Extract the rotation matrix
+    R = result[1]
+    # Extract the rotation_axis, min_proj and max_proj only
+    rotation_axis = result[2]
+    min_proj = result[3]
+    max_proj = result[4]
+    
+    pcd_down = o3d.geometry.PointCloud()
+    pcd_down.points = o3d.utility.Vector3dVector(pts_down)
     
     
-    # 2) Sample exactly as in get_and_process_data()
-    if len(all_pts_rotated) >= num_point:
-        idxs = np.random.choice(len(all_pts_rotated), num_point, replace=False)
+    #! SAMPLE AND GENERATE THE GRASPS
+    # 2) Sample the points to provide always num_point to the net
+    if len(pts_down) >= num_point:
+        idxs = np.random.choice(len(pts_down), num_point, replace=False)
     else:
-        idxs1 = np.arange(len(all_pts_rotated))
-        idxs2 = np.random.choice(len(all_pts_rotated), num_point - len(all_pts_rotated), replace=True)
+        idxs1 = np.arange(len(pts_down))
+        idxs2 = np.random.choice(len(pts_down), num_point - len(pts_down), replace=True)
         idxs = np.concatenate([idxs1, idxs2], axis=0)
-    pts_sampled = all_pts_rotated[idxs]
+    pts_sampled = pts_down[idxs]
     
     # 3) Build end_points
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -435,28 +424,46 @@ def demo_pcd(pcd_path):
     end_points = {'point_clouds': pts_tensor, 'cloud_colors': np.ones_like(pts_sampled)}
     
     # 4) Generate the grasps
-    gg = get_grasps(net, end_points)
-    print(f"Total number of grasps generated: {len(gg)}", flush=True)
+    gg_down = get_grasps(net, end_points)
+    print(f"Total number of grasps generated: {len(gg_down)}", flush=True)
     if collision_thresh > 0:
-        gg = collision_detection(gg, np.array(pcd.points))
-    print(f"Total number of grasps AFTER collision check: {len(gg)}", flush=True)
-    gg = gg[:num_best_grasps] # Limit to the top num_best_grasps grasps
-    print(f"Visualize the best {len(gg)} grasps", flush=True)
+        gg_down = collision_detection(gg_down, np.array(pcd_down.points))
+    print(f"Total number of grasps AFTER collision check: {len(gg_down)}", flush=True)
+    gg_down = gg_down[:num_best_grasps] # Limit to the top num_best_grasps grasps
+    print(f"Visualize the best {len(gg_down)} grasps", flush=True)
+    
+    
+    #! ROTATE THE GRASPS
+    gg_up = copy.deepcopy(gg_down)
+    gg_up = rotate_grasps_180(gg_up, center, R)
+    
     
     # 5) Visualize in Open3D
-    visualization_in_open3d(gg, pcd, rotation_axis, center, min_proj, max_proj)
+    # visualization_in_open3d(gg_up, pcd_up, rotation_axis, center, min_proj, max_proj)
+    DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)
+    
+    
+    # 6) Return the needed parameters
+    return gg_up
 
 
-def rotate_pointcloud_180(all_pts, center):
+def rotate_pointcloud_180(points, center):
     """
-    Function to rotate the pointcloud of 180 degrees around its main axis.
+    Rotates the input point cloud by 180 degrees around its principal axis (first principal component).
+
     ----- Input parameters -----
-    :param all_pts = points of the combined pointcloud (object_pts + plane_pts)
+    :param points: (N, 3) numpy array containing the 3D coordinates of the combined point cloud (object points + plane points).
+    :param center: (3,) numpy array representing the centroid of the object point cloud, used as the rotation origin.
+
     ----- Output parameters -----
-    :return all_rot = points of the combined pointcloud (object_pts + plane_pts) rotated by 180 degrees
+    :return all_rot: (N, 3) numpy array of the rotated point cloud (object + plane), after 180-degree rotation about the principal axis.
+    :return R: (3, 3) numpy array, the rotation matrix representing a 180-degree rotation around the principal axis.
+    :return rotation_axis: (3,) numpy array, the unit vector of the principal axis (first principal component) of the point cloud.
+    :return min_proj: float, minimum projection value of the centered points along the principal axis (for visualization).
+    :return max_proj: float, maximum projection value of the centered points along the principal axis (for visualization).
     """
     # Center all the points in the origin
-    pts_centered = all_pts - center
+    pts_centered = points - center
 
     # Compute the covariance matrix
     cov = (pts_centered.T @ pts_centered) / pts_centered.shape[0]
@@ -480,56 +487,41 @@ def rotate_pointcloud_180(all_pts, center):
     # Apply the rotation and shift all the points to the initial position 
     all_rot = (R @ pts_centered.T).T + center
     
-    return all_rot, rotation_axis, min_proj, max_proj
+    return all_rot, R, rotation_axis, min_proj, max_proj
 
 
-def get_and_process_data(doc_dir):
+def rotate_grasps_180(grasp_group, center, R):
     """
-    Function to load the data from the doc_dir and process it to create the point cloud.
+    Rotates all grasps in the given GraspGroup by 180 degrees around the principal axis of the point cloud.
+    
     ----- Input parameters -----
-    :param doc_dir: directory containing the 'color.png', 'depth.png', 'workspace_mask.png', 'meta.mat'
+    :param grasp_group: GraspGroup object containing the set of grasps to be rotated.
+    :param center: numpy array of shape (3,) representing the center point (cx, cy, cz) about which the rotation is performed.
+    :param R: numpy array of shape (3, 3), the rotation matrix representing a 180° rotation around the principal axis.
+
     ----- Output parameters -----
-    :return: end_points (dict with point cloud and colors), cloud (open3d PointCloud)
+    :return: GraspGroup with all grasps rotated by 180 degrees around the specified principal axis.
     """
-    # load data
-    color = np.array(Image.open(os.path.join(doc_dir, 'color.png')), dtype=np.float32) / 255.0
-    depth = np.array(Image.open(os.path.join(doc_dir, 'depth.png')))
-    workspace_mask = np.array(Image.open(os.path.join(doc_dir, 'workspace_mask.png')))
-    meta = scio.loadmat(os.path.join(doc_dir, 'meta.mat'))
-    intrinsic = meta['intrinsic_matrix']
-    factor_depth = meta['factor_depth']
+    translations = np.asarray(grasp_group.translations)
+    rot_matrices = np.asarray(grasp_group.rotation_matrices)
+    
+    num_grasps = translations.shape[0]
+    for i in range(num_grasps):
+        # Extract the center position (translations) and the orientation (rot_matrices)
+        t_orig = translations[i]
+        R_orig = rot_matrices[i]
 
-    # generate cloud
-    camera = CameraInfo(1280.0, 720.0, intrinsic[0][0], intrinsic[1][1], intrinsic[0][2], intrinsic[1][2], factor_depth)
-    cloud = create_point_cloud_from_depth_image(depth, camera, organized=True)
+        # Center all the grasps at the origin, apply the rotation, then shift all the grasps by the "center" vector
+        t_rotated = R.dot(t_orig - center) + center
+        
+        # Update the rotation matrix of the grasp
+        R_rotated = R.dot(R_orig)
 
-    # get valid points
-    mask = (workspace_mask & (depth > 0))
-    cloud_masked = cloud[mask]
-    color_masked = color[mask]
-
-    # sample points
-    if len(cloud_masked) >= num_point:
-        idxs = np.random.choice(len(cloud_masked), num_point, replace=False)
-    else:
-        idxs1 = np.arange(len(cloud_masked))
-        idxs2 = np.random.choice(len(cloud_masked), num_point-len(cloud_masked), replace=True)
-        idxs = np.concatenate([idxs1, idxs2], axis=0)
-    cloud_sampled = cloud_masked[idxs]
-    color_sampled = color_masked[idxs]
-
-    # convert data
-    cloud = o3d.geometry.PointCloud()
-    cloud.points = o3d.utility.Vector3dVector(cloud_masked.astype(np.float32))
-    cloud.colors = o3d.utility.Vector3dVector(color_masked.astype(np.float32))
-    end_points = dict()
-    cloud_sampled = torch.from_numpy(cloud_sampled[np.newaxis].astype(np.float32))
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    cloud_sampled = cloud_sampled.to(device)
-    end_points['point_clouds'] = cloud_sampled
-    end_points['cloud_colors'] = color_sampled
-
-    return end_points, cloud
+        # Save the results in the grasp_group
+        grasp_group.translations[i] = t_rotated
+        grasp_group.rotation_matrices[i] = R_rotated
+    
+    return grasp_group
 
 
 def visualization_in_open3d(gg, cloud, rotation_axis, center, min_proj, max_proj):
@@ -598,3 +590,80 @@ def _on_sigint_visual(signum, frame):
     terminate_visualization = True
 
 #! -- fine: [DEBUG] Functions to be used to debug --
+
+
+
+
+
+#! ----- inizio debug: visualizzo a schermo pointcloud ruotata + grasp ruotati + pointcloud non ruotata + grasp non ruotati -----
+def DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj):
+    
+    global terminate_visualization
+    terminate_visualization = False
+    
+    signal.signal(signal.SIGINT, _on_sigint_visual)
+    
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(window_name='GraspNet Live', width=1280, height=720)
+    
+    # Create and visualize the origin frame O(0,0,0)
+    axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
+    
+    # Create and visualize the ground plane
+    plane_mesh, plane_grid = create_ground_plane(x_range=(-1.5, 1.5), y_range=(-1.5, 1.5), step=1.0)
+    
+    # Create and visualize the grasps and the gripper
+    gg_up.nms()
+    gg_up.sort_by_score()
+    gg_up = gg_up[:50]
+    grippers_up = gg_up.to_open3d_geometry_list()
+    
+    # Create and visualize the grasps and the gripper
+    gg_down.nms()
+    gg_down.sort_by_score()
+    gg_down = gg_down[:50]
+    grippers_down = gg_down.to_open3d_geometry_list()
+    
+    # Create and visualize the rotation rotation_axis of the pointcloud
+    end1 = center + rotation_axis * min_proj
+    end2 = center + rotation_axis * max_proj
+    points = np.vstack([end1, end2])
+    lines = [[0, 1]]
+    rotation_axis = o3d.geometry.LineSet(
+        points=o3d.utility.Vector3dVector(points), 
+        lines=o3d.utility.Vector2iVector(lines))
+    
+    # Colora pcd_up di rosso
+    pcd_up.paint_uniform_color([1.0, 0.0, 0.0])
+    # Colora pcd_down di blu
+    pcd_down.paint_uniform_color([0.0, 0.0, 1.0])
+    
+    # Visualize in Open3D
+    vis.add_geometry(axis)
+    vis.add_geometry(pcd_up)
+    vis.add_geometry(pcd_down)
+    vis.add_geometry(plane_mesh)
+    vis.add_geometry(plane_grid)
+    vis.add_geometry(rotation_axis)
+    
+    for g_up in grippers_up:
+        if isinstance(g_up, o3d.geometry.Geometry): # vale per LineSet, TriangleMesh, ecc.
+            g_up.paint_uniform_color([1.0, 0.0, 0.0]) # Colora ogni gripper di rosso
+        vis.add_geometry(g_up)
+    
+    for g_down in grippers_down:
+        if isinstance(g_down, o3d.geometry.Geometry): # vale per LineSet, TriangleMesh, ecc.
+            g_down.paint_uniform_color([0.0, 0.0, 1.0]) # Colora ogni gripper di blu
+        vis.add_geometry(g_down)
+    
+    while True:
+        try:
+            if terminate_visualization:
+                break
+            vis.poll_events()
+            vis.update_renderer()
+        except Exception:
+            break
+        time.sleep(0.01) # Short sleep to avoid 100% CPU usage
+    vis.destroy_window()
+#! ----- fine debug: visualizzo a schermo pointcloud ruotata + grasp ruotati + pointcloud non ruotata + grasp non ruotati -----

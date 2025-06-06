@@ -23,7 +23,7 @@ python3 -m venv venv_graspnet
 
 To use the virtual environment inside your ROS 2 workspace:
 
-1. Open the `setup.cfg` file of the package.
+1. Open the `setup.cfg` or create it inside the package.
 2. Add the following section (or edit it if it already exists):
 
    ```ini
@@ -32,7 +32,7 @@ To use the virtual environment inside your ROS 2 workspace:
    ```
 </details>
 
-Inside the same folder, clone the [graspnet-baseline](https://github.com/graspnet/graspnet-baseline.git) repository and install following its ReadMe in the virtual environment.
+Inside the same folder, clone the [graspnet-baseline](https://github.com/graspnet/graspnet-baseline.git) repository or clone my repo forked from it (some errors have been already fixed!) [graspnet-baseline](https://github.com/FabPrez/graspnet-baseline) and install following its ReadMe in the virtual environment.
 Remember to activate the virtual environment before installing the requirements:
 ```bash
 source venv_graspnet/bin/activate
@@ -42,18 +42,12 @@ pip install -r requirements.txt
 
 
 <details>
-
-Inside the same folder, clone the [graspnet-baseline](https://github.com/graspnet/graspnet-baseline.git) repository and install following its ReadMe in the virtual environment.
-Remember to activate the virtual environment before installing the requirements:
-```bash
-source venv_graspnet/bin/activate
-cd graspnet-baseline
-pip install -r requirements.txt
-```
-
 <summary><strong>Troubleshooting during graspnet-baseline installation</strong></summary>
 
-- Use the correct version of PyTorch for your CUDA version.
+- Use the correct version of PyTorch for your CUDA version. For RTX 4070 was:
+   ```bash
+    pip install torch==1.12.1+cu116  -f https://download.pytorch.org/whl/torch_stable.html
+    ```
 - ERRORS during installing pointnet2 and knn: Set the compilers GCC 9 and G++ 9 before running the installation:
     ```bash
     export CC=gcc-9

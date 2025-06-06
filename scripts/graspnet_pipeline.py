@@ -244,87 +244,87 @@ def visualizer_loop():
         vis.destroy_window()
 
 
-def run_graspnet_pipeline(object_pts):
-    """
-    Called for each new incoming point cloud (numpy array Nx3).
-    Computes grasp candidates and updates the visualization window.
+# def run_graspnet_pipeline(object_pts):
+#     """
+#     Called for each new incoming point cloud (numpy array Nx3).
+#     Computes grasp candidates and updates the visualization window.
     
-    :param object_pts: np.ndarray of shape (N, 3) with XYZ coordinates
+#     :param object_pts: np.ndarray of shape (N, 3) with XYZ coordinates
     
-    :return: GraspGroup = predicted grasps
-    """
-    global latest_points, latest_gg, pending_update
+#     :return: GraspGroup = predicted grasps
+#     """
+#     global latest_points, latest_gg, pending_update
     
-    # TODO: manually add the plane UNDER the objects
-    # Find the lowest point (minimum z)
-    idx_max_z = np.argmax(object_pts[:, 2])
-    z_min = object_pts[idx_max_z, 2]
+#     # TODO: manually add the plane UNDER the objects
+#     # Find the lowest point (minimum z)
+#     idx_max_z = np.argmax(object_pts[:, 2])
+#     z_min = object_pts[idx_max_z, 2]
 
-    #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_min
-    # Compute the center
-    center = np.mean(object_pts, axis=0)
-    side_length = 0.20
-    half_side = side_length / 2.0
-    num_samples = 20
+#     #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_min
+#     # Compute the center
+#     center = np.mean(object_pts, axis=0)
+#     side_length = 0.20
+#     half_side = side_length / 2.0
+#     num_samples = 20
 
-    xs = np.linspace(center[0] - half_side, center[0] + half_side, num_samples)
-    ys = np.linspace(center[1] - half_side, center[1] + half_side, num_samples)
-    xx, yy = np.meshgrid(xs, ys)
+#     xs = np.linspace(center[0] - half_side, center[0] + half_side, num_samples)
+#     ys = np.linspace(center[1] - half_side, center[1] + half_side, num_samples)
+#     xx, yy = np.meshgrid(xs, ys)
 
-    xx_flat = xx.flatten()
-    yy_flat = yy.flatten()
-    zz_flat = np.full_like(xx_flat, z_min)
+#     xx_flat = xx.flatten()
+#     yy_flat = yy.flatten()
+#     zz_flat = np.full_like(xx_flat, z_min)
 
-    plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
+#     plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
 
-    plane_pcd = o3d.geometry.PointCloud()
-    plane_pcd.points = o3d.utility.Vector3dVector(plane_pts)
-    print(f"-> generated plane with {plane_pts.shape[0]} points")
+#     plane_pcd = o3d.geometry.PointCloud()
+#     plane_pcd.points = o3d.utility.Vector3dVector(plane_pts)
+#     print(f"-> generated plane with {plane_pts.shape[0]} points")
     
     
-    #! COMBINE THE TWO POINTCLOUDS
-    all_pts = np.vstack([object_pts, plane_pts])
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(all_pts)
+#     #! COMBINE THE TWO POINTCLOUDS
+#     all_pts = np.vstack([object_pts, plane_pts])
+#     pcd = o3d.geometry.PointCloud()
+#     pcd.points = o3d.utility.Vector3dVector(all_pts)
     
     
-    # Load the graspnet model
-    net = get_net()
+#     # Load the graspnet model
+#     net = get_net()
     
-    # Sampling to get num_point points
-    if len(all_pts) >= num_point:
-        idxs = np.random.choice(len(all_pts), num_point, replace=False)
-    else:
-        idxs1 = np.arange(len(all_pts))
-        idxs2 = np.random.choice(len(all_pts), num_point - len(all_pts), replace=True)
-        idxs = np.concatenate([idxs1, idxs2], axis=0)
-    cloud_sampled = all_pts[idxs]
-    color_sampled = np.ones_like(cloud_sampled, dtype=np.float32) * 0.5  # Dummy colors (gray)
+#     # Sampling to get num_point points
+#     if len(all_pts) >= num_point:
+#         idxs = np.random.choice(len(all_pts), num_point, replace=False)
+#     else:
+#         idxs1 = np.arange(len(all_pts))
+#         idxs2 = np.random.choice(len(all_pts), num_point - len(all_pts), replace=True)
+#         idxs = np.concatenate([idxs1, idxs2], axis=0)
+#     cloud_sampled = all_pts[idxs]
+#     color_sampled = np.ones_like(cloud_sampled, dtype=np.float32) * 0.5  # Dummy colors (gray)
 
-    # Create the dictionary end_points (pointcloud + colors)
-    tensor_points = torch.from_numpy(cloud_sampled[np.newaxis].astype(np.float32)).to(device)
-    end_points = {
-        'point_clouds': tensor_points,
-        'cloud_colors': color_sampled
-    }
+#     # Create the dictionary end_points (pointcloud + colors)
+#     tensor_points = torch.from_numpy(cloud_sampled[np.newaxis].astype(np.float32)).to(device)
+#     end_points = {
+#         'point_clouds': tensor_points,
+#         'cloud_colors': color_sampled
+#     }
 
-    # Compute the grasps
-    gg = get_grasps(net, end_points)
-    if collision_thresh > 0:
-        gg = collision_detection(gg, all_pts)
+#     # Compute the grasps
+#     gg = get_grasps(net, end_points)
+#     if collision_thresh > 0:
+#         gg = collision_detection(gg, all_pts)
     
-    # Put the results in the shared buffer, signaling the visualization thread
-    with lock:
-        latest_points = all_pts.copy()
-        latest_gg = gg
-        pending_update = True
+#     # Put the results in the shared buffer, signaling the visualization thread
+#     with lock:
+#         latest_points = all_pts.copy()
+#         latest_gg = gg
+#         pending_update = True
 
 
 
 
 
 #! -- inizio: [DEBUG] Functions to be used to debug --
-def demo_pcd(pcd_path):
+def run_graspnet_pipeline(object_pts):
     """
     Utility function for debugging and visualization.
     Demonstrates how to generate and visualize grasp predictions from a given PCD file.
@@ -337,8 +337,8 @@ def demo_pcd(pcd_path):
 
     
     #! LOAD POINT CLOUD FROM .PCD FILE
-    object_pts = np.asarray(o3d.io.read_point_cloud(pcd_path, remove_nan_points=True, remove_infinite_points=True).points, dtype=np.float32)
-    print(f"-> loaded pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
+    # object_pts = np.asarray(o3d.io.read_point_cloud(pcd_path, remove_nan_points=True, remove_infinite_points=True).points, dtype=np.float32)
+    # print(f"-> loaded pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
     
     
     #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_plane
@@ -432,7 +432,7 @@ def demo_pcd(pcd_path):
     
     
     # 5) Visualize in Open3D
-    # visualization_in_open3d(gg_up, pcd_up, rotation_axis, center, min_proj, max_proj)
+    visualization_in_open3d(gg_up, pcd_up, rotation_axis, center, min_proj, max_proj)
     # DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)
     
     return gg_up

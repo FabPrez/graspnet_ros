@@ -44,7 +44,10 @@ pip install -r requirements.txt
 <details>
 <summary><strong>Troubleshooting during graspnet-baseline installation</strong></summary>
 
-- Use the correct version of PyTorch for your CUDA version.
+- Use the correct version of PyTorch for your CUDA version. For RTX 4070 was:
+   ```bash
+    pip install torch==1.12.1+cu116  -f https://download.pytorch.org/whl/torch_stable.html
+    ```
 - ERRORS during installing pointnet2 and knn: Set the compilers GCC 9 and G++ 9 before running the installation:
     ```bash
     export CC=gcc-9

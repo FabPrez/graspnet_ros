@@ -1,6 +1,7 @@
 # graspnet_ros
 
 ROS 2 wrapper for [graspnet-baseline](https://github.com/graspnet/graspnet-baseline.git).
+I have forked also a stable version for ubuntu22.04 and ros2 humble for graspnet-baseline, there are some minor fixes -> [graspnet-baseline](https://github.com/FabPrez/graspnet-baseline)
 
 ## Installation
 

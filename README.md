@@ -23,7 +23,7 @@ python3 -m venv venv_graspnet
 
 To use the virtual environment inside your ROS 2 workspace:
 
-1. Open the `setup.cfg` file of the package.
+1. Open the `setup.cfg` or create it inside the package.
 2. Add the following section (or edit it if it already exists):
 
    ```ini

@@ -4,11 +4,11 @@ import sys
 import numpy as np
 import rclpy
 import sensor_msgs_py.point_cloud2 as pc2
-from scipy.spatial.transform import Rotation
 import threading
 from geometry_msgs.msg import Pose, PoseArray, Point, Quaternion
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
+from scipy.spatial.transform import Rotation
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 import graspnet_pipeline

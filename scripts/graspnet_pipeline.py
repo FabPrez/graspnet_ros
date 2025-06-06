@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 import os
 import sys
-import argparse
-import importlib
 import copy
 import numpy as np
 import open3d as o3d
-import scipy.io as scio
 import signal
 import time
 import torch
-import threading
-from PIL import Image
 from graspnetAPI import GraspGroup
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -25,17 +20,15 @@ sys.path.append(os.path.join(graspnet_baseline_dir, 'dataset'))
 sys.path.append(os.path.join(graspnet_baseline_dir, 'utils'))
 
 from graspnet import GraspNet, pred_decode
-from graspnet_dataset import GraspNetDataset
 from collision_detector import ModelFreeCollisionDetector
-from data_utils import CameraInfo, create_point_cloud_from_depth_image
 from parameters import *
 
 
 def get_net():
     """
-    Function to load the graspnet model (parameters + checkpoint folder).
-    ----- Output parameters -----
-    :return: net
+    Loads and initializes the GraspNet model with the required parameters and checkpoint.
+    
+    :return: net = initialized GraspNet model
     """
     global net
     if net is not None:
@@ -56,12 +49,12 @@ def get_net():
 
 def get_grasps(net, end_points):
     """
-    Function to get the grasps.
-    ----- Input parameters -----
-    :param net: graspnet model
-    :param end_points: dictionary with the input data (pointcloud and colors)
-    ----- Output parameters -----
-    :return: GraspGroup
+    Performs inference using the GraspNet model to generate grasp candidates from input data.
+
+    :param net: Pre-loaded GraspNet model for inference
+    :param end_points: Dictionary containing the point cloud and associated color information
+
+    :return: GraspGroup = collection of predicted grasps
     """
     with torch.no_grad():
         end_points = net(end_points)
@@ -73,12 +66,12 @@ def get_grasps(net, end_points):
 
 def collision_detection(gg, cloud):
     """
-    Function to detect collisions between the grasps and the point cloud.
-    ----- Input parameters -----
-    :param gg: GraspGroup (predicted grasps)
-    :param cloud: pointcloud
-    ----- Output parameters -----
-    :return: GraspGroup (filtered grasps)
+    Detects and removes grasps that are in collision with the input point cloud.
+    
+    :param gg: GraspGroup containing predicted grasp candidates
+    :param cloud: point cloud as a numpy array or Open3D PointCloud
+    
+    :return: GraspGroup with only collision-free grasps
     """
     mfcdetector = ModelFreeCollisionDetector(cloud, finger_width=finger_width, finger_length=finger_length, voxel_size=voxel_size)
     collision_mask = mfcdetector.detect(gg, approach_dist=approach_dist, collision_thresh=collision_thresh)
@@ -88,13 +81,13 @@ def collision_detection(gg, cloud):
 
 def create_ground_plane(x_range, y_range, step=1.0):
     """
-    Function to create a ground plane in Open3D.
-    ----- Input parameters -----
-    :param x_range: (x_min, x_max)
-    :param y_range: (y_min, y_max)
-    :param step: step size for the grid
-    ----- Output parameters -----
-    :return: mesh (TriangleMesh) and grid (LineSet)
+    Creates a ground plane mesh and grid lines using Open3D.
+    
+    :param x_range: tuple (x_min, x_max) specifying the X-axis limits
+    :param y_range: tuple (y_min, y_max) specifying the Y-axis limits
+    :param step: grid spacing for both axes
+    
+    :return: mesh (TriangleMesh) and grid (LineSet) representing the plane
     """
     # 1) Generate the vertices of the regular grid
     xs = np.arange(x_range[0], x_range[1] + step, step)
@@ -136,14 +129,14 @@ def create_ground_plane(x_range, y_range, step=1.0):
 
 def init_visualizer():
     """
-    Function to initialize (ONLY ONCE) the Open3D window and to add:
-    - the reference axis
-    - the ground plane
-    - an empty PointCloud that will be updated in update_visualization().
-    ----- Output parameters -----
-    :return vis = Open3D Visualizer
-    :return pcd_vis = PointCloud placeholder
-    :return gripper_list = list of grippers
+    Initializes the Open3D visualizer (only once) and adds:
+    - the reference coordinate axis
+    - the ground plane mesh and grid
+    - an empty PointCloud placeholder, updated later in update_visualization().
+    
+    :return vis: Open3D Visualizer instance
+    :return pcd_vis: PointCloud placeholder object
+    :return gripper_list: list to store gripper geometries
     """
     global vis, pcd_vis, gripper_list
     if vis is not None:
@@ -178,11 +171,11 @@ def init_visualizer():
 
 def update_visualization(points_np, gg):
     """
-    Function to update the Open3D window with the new pointcloud and the new grasps.
-    This method is called ONLY by the visualization thread!
-    ----- Input parameters -----
-    :param points_np = numpy array (Nx3) with the new pointcloud
-    :param gg = GraspGroup (predicted grasps)
+    Updates the Open3D visualizer with the latest point cloud and grasp predictions.
+    This function is invoked exclusively by the visualization thread.
+    
+    :param points_np: numpy array (Nx3) containing the updated point cloud
+    :param gg: GraspGroup object with the predicted grasps
     """
     global vis, pcd_vis, gripper_list
 
@@ -217,9 +210,9 @@ def update_visualization(points_np, gg):
 
 def visualizer_loop():
     """
-    Thread that stays in a loop:
-    - if pending_update == True, it reads the latest_points/latest_gg and calls update_visualization()
-    - runs vis.poll_events() and vis.update_renderer() to keep the window responsive
+    Thread loop for visualization:
+    - If pending_update == True, reads latest_points/latest_gg and calls update_visualization()
+    - Continuously runs vis.poll_events() and vis.update_renderer() to keep the window interactive
     """
     global latest_points, latest_gg, pending_update, terminate
 
@@ -253,12 +246,12 @@ def visualizer_loop():
 
 def run_graspnet_pipeline(object_pts):
     """
-    This function is called for each new pointcloud received (numpy array Nx3).
-    It computes the grasps and calls update_visualization() to update the window.
-    ----- Input parameters -----
+    Called for each new incoming point cloud (numpy array Nx3).
+    Computes grasp candidates and updates the visualization window.
+    
     :param object_pts: np.ndarray of shape (N, 3) with XYZ coordinates
-    ----- Output parameters -----
-    :return: GraspGroup (predicted grasps)
+    
+    :return: GraspGroup = predicted grasps
     """
     global latest_points, latest_gg, pending_update
     
@@ -333,12 +326,12 @@ def run_graspnet_pipeline(object_pts):
 #! -- inizio: [DEBUG] Functions to be used to debug --
 def demo_pcd(pcd_path):
     """
-    Function to be used to DEBUG.
-    Demo to visualize the grasps from the pcd file
-    ----- Input parameters -----
-    :param pcd_path: path to the pcd file
-    ----- Output parameters -----
-    :return: None
+    Utility function for debugging and visualization.
+    Demonstrates how to generate and visualize grasp predictions from a given PCD file.
+    
+    :param pcd_path: Path to the input PCD file containing the object point cloud.
+    
+    :return: gg_up = GraspGroup containing the top-ranked grasp candidates.
     """
     net = get_net()
 
@@ -442,8 +435,6 @@ def demo_pcd(pcd_path):
     # visualization_in_open3d(gg_up, pcd_up, rotation_axis, center, min_proj, max_proj)
     # DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)
     
-    
-    # 6) Return the needed parameters
     return gg_up
 
 
@@ -451,11 +442,9 @@ def rotate_pointcloud_180(points, center):
     """
     Rotates the input point cloud by 180 degrees around its principal axis (first principal component).
 
-    ----- Input parameters -----
     :param points: (N, 3) numpy array containing the 3D coordinates of the combined point cloud (object points + plane points).
     :param center: (3,) numpy array representing the centroid of the object point cloud, used as the rotation origin.
 
-    ----- Output parameters -----
     :return all_rot: (N, 3) numpy array of the rotated point cloud (object + plane), after 180-degree rotation about the principal axis.
     :return R: (3, 3) numpy array, the rotation matrix representing a 180-degree rotation around the principal axis.
     :return rotation_axis: (3,) numpy array, the unit vector of the principal axis (first principal component) of the point cloud.
@@ -494,12 +483,10 @@ def rotate_grasps_180(grasp_group, center, R):
     """
     Rotates all grasps in the given GraspGroup by 180 degrees around the principal axis of the point cloud.
     
-    ----- Input parameters -----
     :param grasp_group: GraspGroup object containing the set of grasps to be rotated.
     :param center: numpy array of shape (3,) representing the center point (cx, cy, cz) about which the rotation is performed.
     :param R: numpy array of shape (3, 3), the rotation matrix representing a 180° rotation around the principal axis.
-
-    ----- Output parameters -----
+    
     :return: GraspGroup with all grasps rotated by 180 degrees around the specified principal axis.
     """
     translations = np.asarray(grasp_group.translations)
@@ -526,10 +513,14 @@ def rotate_grasps_180(grasp_group, center, R):
 
 def visualization_in_open3d(gg, cloud, rotation_axis, center, min_proj, max_proj):
     """
-    Function to visualize the grasps and the point cloud in Open3D.
-    ----- Input parameters -----
-    :param gg: GraspGroup (predicted grasps)
-    :param cloud: open3d PointCloud with the point cloud
+    Visualizes the predicted grasps, the input point cloud, the ground plane, and the specified rotation axis using Open3D.
+
+    :param gg: GraspGroup containing the predicted grasp candidates.
+    :param cloud: open3d.geometry.PointCloud representing the scene to visualize.
+    :param rotation_axis: (3,) numpy array, unit vector representing the rotation axis to be visualized.
+    :param center: (3,) numpy array, the center point (3D coordinates) through which the rotation axis passes.
+    :param min_proj: float, minimum projection scalar along the rotation axis from the center.
+    :param max_proj: float, maximum projection scalar along the rotation axis from the center.
     """
     global terminate_visualization
     terminate_visualization = False

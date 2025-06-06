@@ -17,6 +17,7 @@
   <depend>visualization_msgs</depend>
   <depend>pointcloud_handler</depend>
   <depend>nbv_octomap_utils</depend>
+  <exec_depend>nbv_interfaces</exec_depend>
 
 <!-- 
   <test_depend>pointcloud_handler</test_depend>

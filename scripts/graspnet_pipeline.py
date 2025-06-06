@@ -432,7 +432,7 @@ def run_graspnet_pipeline(object_pts):
     
     
     # 5) Visualize in Open3D
-    visualization_in_open3d(gg_up, pcd_up, rotation_axis, center, min_proj, max_proj)
+    # visualization_in_open3d(gg_up, pcd_up, rotation_axis, center, min_proj, max_proj)
     # DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)
     
     return gg_up

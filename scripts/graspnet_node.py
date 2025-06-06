@@ -9,6 +9,8 @@ from geometry_msgs.msg import Pose, PoseArray, Point, Quaternion
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
 from scipy.spatial.transform import Rotation
+import parameters as params
+from nbv_interfaces.srv import UpdateInterestMap
 
 RED = "\033[91m"
 GREEN = "\033[92m"
@@ -31,7 +33,13 @@ class GraspNetNode(Node):
         self.subscription = self.create_subscription(
             PointCloud2, '/octomap_point_cloud_centers', self.pointcloud_callback, 10)
         self.get_logger().info("GraspNetNode started, listening for pointclouds...")
+        self.cli = self.create_client(UpdateInterestMap, '/update_interest_map')
+        self.req = UpdateInterestMap.Request()
         self.num_iterations = 0
+        # structure to store the best grasp for each iteration and its score
+        self.best_grasp_history = []
+        self.score_history = []
+        
 
     def pointcloud_callback(self, msg):
         self.get_logger().info("Received PointCloud2")
@@ -49,8 +57,55 @@ class GraspNetNode(Node):
         points = np.array([ [x, y, z] for x, y, z in pc ], dtype=np.float32)
 
         # Run the pipeline without color
-        graspnet_pipeline.run_graspnet_pipeline(points)
+        gg = graspnet_pipeline.run_graspnet_pipeline(points)
+        
+        grasp_pose = [] # the num_best_grasp I want to send to the service
+        scores = [] # the scores of the grasps I want to send to the service
+        num_grasps = min(len(gg), params.num_best_grasps-1)
+        for k in range(num_grasps):
+            
+            grasp = gg[k]
+            
+            R = np.array(grasp.rotation_matrix)
+            q = Rotation.from_matrix(R)
+            q_xyzw = q.as_quat()
+        
+            p = Pose()
+            p.position = Point(x = float(grasp.translation[0]), y = float(grasp.translation[1]), z = float(grasp.translation[2]))
+            p.orientation = Quaternion(x = float(q_xyzw[0]), y = float(q_xyzw[1]), z = float(q_xyzw[2]), w = float(q_xyzw[3]))
+            
+            grasp_pose.append(p) 
+            scores.append(grasp.score)
+        self.num_iterations += 1
+   
+        self.best_grasp_history.append(grasp_pose[0]) # Save the best grasp only
+        self.score_history.append(scores[0]) # Save the score of the best grasp only
+        
+        self.call_srv_update_interest_map(grasp_pose, scores)
+        
         print(f"{GREEN} ============== Ready for next iteration ============== {RESET}", flush=True)
+    
+    def call_srv_update_interest_map(self,poses,scores):
+        # Esempio: creazione di una grasp
+        # pose = Pose()
+        # pose.position.x = 1.0
+        # pose.position.y = 2.0
+        # pose.position.z = 3.0
+        # pose.orientation.x = 0.0
+        # pose.orientation.y = 0.0
+        # pose.orientation.z = 0.0
+        # pose.orientation.w = 1.0
+
+        self.req.grasps = poses
+        self.req.scores = scores
+
+        future = self.cli.call_async(self.req)
+        # rclpy.spin_until_future_complete(self, future)
+
+        # if future.result() is not None:
+        #     self.get_logger().info(f'Service response: success = {future.result().success}')
+        # else:
+        #     self.get_logger().error('Service call failed')
 
 
 def main(args=None):
@@ -60,6 +115,11 @@ def main(args=None):
     # Start the visualization thread (daemon=True → it dies with the main thread)
     vis_thread = threading.Thread(target=graspnet_pipeline.visualizer_loop, daemon=True)
     vis_thread.start()
+    
+    # Test for the service call
+    # rclpy.spin_once(node, timeout_sec=5.0)
+    # # Call the service to update the interest map
+    # node.call_srv_update_interest_map()
 
     # Start ROS2 spin
     try:

@@ -32,7 +32,7 @@ To use the virtual environment inside your ROS 2 workspace:
    ```
 </details>
 
-Inside the same folder, clone the [graspnet-baseline](https://github.com/graspnet/graspnet-baseline.git) repository and install following its ReadMe in the virtual environment.
+Inside the same folder, clone the [graspnet-baseline](https://github.com/graspnet/graspnet-baseline.git) repository or clone my repo forked from it (some errors have been already fixed!) [graspnet-baseline](https://github.com/FabPrez/graspnet-baseline) and install following its ReadMe in the virtual environment.
 Remember to activate the virtual environment before installing the requirements:
 ```bash
 source venv_graspnet/bin/activate
@@ -42,15 +42,6 @@ pip install -r requirements.txt
 
 
 <details>
-
-Inside the same folder, clone the [graspnet-baseline](https://github.com/graspnet/graspnet-baseline.git) repository and install following its ReadMe in the virtual environment.
-Remember to activate the virtual environment before installing the requirements:
-```bash
-source venv_graspnet/bin/activate
-cd graspnet-baseline
-pip install -r requirements.txt
-```
-
 <summary><strong>Troubleshooting during graspnet-baseline installation</strong></summary>
 
 - Use the correct version of PyTorch for your CUDA version.

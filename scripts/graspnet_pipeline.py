@@ -23,6 +23,19 @@ from graspnet import GraspNet, pred_decode
 from collision_detector import ModelFreeCollisionDetector
 from parameters import *
 
+# ----- Global variables for the visualization -----
+vis = None
+pcd_vis = None
+gripper_list = []
+net = None
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+latest_points = None
+latest_gg = None
+pending_update = False
+terminate = False
+lock = threading.Lock()
+terminate_visualization = False
+
 
 def get_net():
     """
@@ -244,101 +257,16 @@ def visualizer_loop():
         vis.destroy_window()
 
 
-# def run_graspnet_pipeline(object_pts):
-#     """
-#     Called for each new incoming point cloud (numpy array Nx3).
-#     Computes grasp candidates and updates the visualization window.
-    
-#     :param object_pts: np.ndarray of shape (N, 3) with XYZ coordinates
-    
-#     :return: GraspGroup = predicted grasps
-#     """
-#     global latest_points, latest_gg, pending_update
-    
-#     # TODO: manually add the plane UNDER the objects
-#     # Find the lowest point (minimum z)
-#     idx_max_z = np.argmax(object_pts[:, 2])
-#     z_min = object_pts[idx_max_z, 2]
-
-#     #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_min
-#     # Compute the center
-#     center = np.mean(object_pts, axis=0)
-#     side_length = 0.20
-#     half_side = side_length / 2.0
-#     num_samples = 20
-
-#     xs = np.linspace(center[0] - half_side, center[0] + half_side, num_samples)
-#     ys = np.linspace(center[1] - half_side, center[1] + half_side, num_samples)
-#     xx, yy = np.meshgrid(xs, ys)
-
-#     xx_flat = xx.flatten()
-#     yy_flat = yy.flatten()
-#     zz_flat = np.full_like(xx_flat, z_min)
-
-#     plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
-
-#     plane_pcd = o3d.geometry.PointCloud()
-#     plane_pcd.points = o3d.utility.Vector3dVector(plane_pts)
-#     print(f"-> generated plane with {plane_pts.shape[0]} points")
-    
-    
-#     #! COMBINE THE TWO POINTCLOUDS
-#     all_pts = np.vstack([object_pts, plane_pts])
-#     pcd = o3d.geometry.PointCloud()
-#     pcd.points = o3d.utility.Vector3dVector(all_pts)
-    
-    
-#     # Load the graspnet model
-#     net = get_net()
-    
-#     # Sampling to get num_point points
-#     if len(all_pts) >= num_point:
-#         idxs = np.random.choice(len(all_pts), num_point, replace=False)
-#     else:
-#         idxs1 = np.arange(len(all_pts))
-#         idxs2 = np.random.choice(len(all_pts), num_point - len(all_pts), replace=True)
-#         idxs = np.concatenate([idxs1, idxs2], axis=0)
-#     cloud_sampled = all_pts[idxs]
-#     color_sampled = np.ones_like(cloud_sampled, dtype=np.float32) * 0.5  # Dummy colors (gray)
-
-#     # Create the dictionary end_points (pointcloud + colors)
-#     tensor_points = torch.from_numpy(cloud_sampled[np.newaxis].astype(np.float32)).to(device)
-#     end_points = {
-#         'point_clouds': tensor_points,
-#         'cloud_colors': color_sampled
-#     }
-
-#     # Compute the grasps
-#     gg = get_grasps(net, end_points)
-#     if collision_thresh > 0:
-#         gg = collision_detection(gg, all_pts)
-    
-#     # Put the results in the shared buffer, signaling the visualization thread
-#     with lock:
-#         latest_points = all_pts.copy()
-#         latest_gg = gg
-#         pending_update = True
-
-
-
-
-
-#! -- inizio: [DEBUG] Functions to be used to debug --
 def run_graspnet_pipeline(object_pts):
     """
-    Utility function for debugging and visualization.
-    Demonstrates how to generate and visualize grasp predictions from a given PCD file.
+    Called for each new incoming point cloud (numpy array Nx3).
+    Computes grasp candidates and updates the visualization window.
     
-    :param pcd_path: Path to the input PCD file containing the object point cloud.
+    :param object_pts: np.ndarray of shape (N, 3) with XYZ coordinates
     
     :return: gg_up = GraspGroup containing the top-ranked grasp candidates.
     """
     net = get_net()
-
-    
-    #! LOAD POINT CLOUD FROM .PCD FILE
-    # object_pts = np.asarray(o3d.io.read_point_cloud(pcd_path, remove_nan_points=True, remove_infinite_points=True).points, dtype=np.float32)
-    # print(f"-> loaded pointcloud with {object_pts.shape[0]} points for the OBJECT ONLY", flush=True)
     
     
     #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_plane
@@ -432,7 +360,7 @@ def run_graspnet_pipeline(object_pts):
     
     
     # 5) Visualize in Open3D
-    # visualization_in_open3d(gg_up, pcd_up, rotation_axis, center, min_proj, max_proj)
+    visualization_in_open3d(gg_up, pcd_up, rotation_axis, center, min_proj, max_proj)
     # DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)
     
     return gg_up
@@ -525,8 +453,6 @@ def visualization_in_open3d(gg, cloud, rotation_axis, center, min_proj, max_proj
     global terminate_visualization
     terminate_visualization = False
     
-    signal.signal(signal.SIGINT, _on_sigint_visual)
-    
     vis = o3d.visualization.Visualizer()
     vis.create_window(window_name='GraspNet Live', width=1280, height=720)
     
@@ -572,89 +498,78 @@ def visualization_in_open3d(gg, cloud, rotation_axis, center, min_proj, max_proj
     vis.destroy_window()
 
 
-def _on_sigint_visual(signum, frame):
-    """
-    SIGINT handler to stop the visualization loop.
-    It is registered only when the window is opened.
-    """
-    global terminate_visualization
-    terminate_visualization = True
-
-#! -- fine: [DEBUG] Functions to be used to debug --
 
 
 
-
-
-#! ----- inizio debug: visualizzo a schermo pointcloud ruotata + grasp ruotati + pointcloud non ruotata + grasp non ruotati -----
-def DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj):
+# #! ----- inizio debug: visualizzo a schermo pointcloud ruotata + grasp ruotati + pointcloud non ruotata + grasp non ruotati -----
+# def DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj):
     
-    global terminate_visualization
-    terminate_visualization = False
+#     global terminate_visualization
+#     terminate_visualization = False
     
-    signal.signal(signal.SIGINT, _on_sigint_visual)
+#     signal.signal(signal.SIGINT, _on_sigint_visual)
     
-    vis = o3d.visualization.Visualizer()
-    vis.create_window(window_name='GraspNet Live', width=1280, height=720)
+#     vis = o3d.visualization.Visualizer()
+#     vis.create_window(window_name='GraspNet Live', width=1280, height=720)
     
-    # Create and visualize the origin frame O(0,0,0)
-    axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
+#     # Create and visualize the origin frame O(0,0,0)
+#     axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
     
-    # Create and visualize the ground plane
-    plane_mesh, plane_grid = create_ground_plane(x_range=(-1.5, 1.5), y_range=(-1.5, 1.5), step=1.0)
+#     # Create and visualize the ground plane
+#     plane_mesh, plane_grid = create_ground_plane(x_range=(-1.5, 1.5), y_range=(-1.5, 1.5), step=1.0)
     
-    # Create and visualize the grasps and the gripper
-    gg_up.nms()
-    gg_up.sort_by_score()
-    gg_up = gg_up[:50]
-    grippers_up = gg_up.to_open3d_geometry_list()
+#     # Create and visualize the grasps and the gripper
+#     gg_up.nms()
+#     gg_up.sort_by_score()
+#     gg_up = gg_up[:50]
+#     grippers_up = gg_up.to_open3d_geometry_list()
     
-    # Create and visualize the grasps and the gripper
-    gg_down.nms()
-    gg_down.sort_by_score()
-    gg_down = gg_down[:50]
-    grippers_down = gg_down.to_open3d_geometry_list()
+#     # Create and visualize the grasps and the gripper
+#     gg_down.nms()
+#     gg_down.sort_by_score()
+#     gg_down = gg_down[:50]
+#     grippers_down = gg_down.to_open3d_geometry_list()
     
-    # Create and visualize the rotation rotation_axis of the pointcloud
-    end1 = center + rotation_axis * min_proj
-    end2 = center + rotation_axis * max_proj
-    points = np.vstack([end1, end2])
-    lines = [[0, 1]]
-    rotation_axis = o3d.geometry.LineSet(
-        points=o3d.utility.Vector3dVector(points), 
-        lines=o3d.utility.Vector2iVector(lines))
+#     # Create and visualize the rotation rotation_axis of the pointcloud
+#     end1 = center + rotation_axis * min_proj
+#     end2 = center + rotation_axis * max_proj
+#     points = np.vstack([end1, end2])
+#     lines = [[0, 1]]
+#     rotation_axis = o3d.geometry.LineSet(
+#         points=o3d.utility.Vector3dVector(points), 
+#         lines=o3d.utility.Vector2iVector(lines))
     
-    # Colora pcd_up di rosso
-    pcd_up.paint_uniform_color([1.0, 0.0, 0.0])
-    # Colora pcd_down di blu
-    pcd_down.paint_uniform_color([0.0, 0.0, 1.0])
+#     # Colora pcd_up di rosso
+#     pcd_up.paint_uniform_color([1.0, 0.0, 0.0])
+#     # Colora pcd_down di blu
+#     pcd_down.paint_uniform_color([0.0, 0.0, 1.0])
     
-    # Visualize in Open3D
-    vis.add_geometry(axis)
-    vis.add_geometry(pcd_up)
-    vis.add_geometry(pcd_down)
-    vis.add_geometry(plane_mesh)
-    vis.add_geometry(plane_grid)
-    vis.add_geometry(rotation_axis)
+#     # Visualize in Open3D
+#     vis.add_geometry(axis)
+#     vis.add_geometry(pcd_up)
+#     vis.add_geometry(pcd_down)
+#     vis.add_geometry(plane_mesh)
+#     vis.add_geometry(plane_grid)
+#     vis.add_geometry(rotation_axis)
     
-    for g_up in grippers_up:
-        if isinstance(g_up, o3d.geometry.Geometry): # vale per LineSet, TriangleMesh, ecc.
-            g_up.paint_uniform_color([1.0, 0.0, 0.0]) # Colora ogni gripper di rosso
-        vis.add_geometry(g_up)
+#     for g_up in grippers_up:
+#         if isinstance(g_up, o3d.geometry.Geometry): # vale per LineSet, TriangleMesh, ecc.
+#             g_up.paint_uniform_color([1.0, 0.0, 0.0]) # Colora ogni gripper di rosso
+#         vis.add_geometry(g_up)
     
-    for g_down in grippers_down:
-        if isinstance(g_down, o3d.geometry.Geometry): # vale per LineSet, TriangleMesh, ecc.
-            g_down.paint_uniform_color([0.0, 0.0, 1.0]) # Colora ogni gripper di blu
-        vis.add_geometry(g_down)
+#     for g_down in grippers_down:
+#         if isinstance(g_down, o3d.geometry.Geometry): # vale per LineSet, TriangleMesh, ecc.
+#             g_down.paint_uniform_color([0.0, 0.0, 1.0]) # Colora ogni gripper di blu
+#         vis.add_geometry(g_down)
     
-    while True:
-        try:
-            if terminate_visualization:
-                break
-            vis.poll_events()
-            vis.update_renderer()
-        except Exception:
-            break
-        time.sleep(0.01) # Short sleep to avoid 100% CPU usage
-    vis.destroy_window()
-#! ----- fine debug: visualizzo a schermo pointcloud ruotata + grasp ruotati + pointcloud non ruotata + grasp non ruotati -----
+#     while True:
+#         try:
+#             if terminate_visualization:
+#                 break
+#             vis.poll_events()
+#             vis.update_renderer()
+#         except Exception:
+#             break
+#         time.sleep(0.01) # Short sleep to avoid 100% CPU usage
+#     vis.destroy_window()
+# #! ----- fine debug: visualizzo a schermo pointcloud ruotata + grasp ruotati + pointcloud non ruotata + grasp non ruotati -----

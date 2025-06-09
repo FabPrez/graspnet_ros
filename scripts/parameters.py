@@ -49,17 +49,4 @@ voxel_size = 0.01
 collision_thresh = 0.01
 approach_dist = 0.01
 
-
-# ----- Global variables for the visualization -----
-vis = None
-pcd_vis = None
-gripper_list = []
-net = None
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-latest_points = None
-latest_gg = None
-pending_update = False
-terminate = False
-lock = threading.Lock()
-terminate_visualization = False
 num_best_grasps = 10

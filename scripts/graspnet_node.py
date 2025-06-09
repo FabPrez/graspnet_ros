@@ -86,16 +86,6 @@ class GraspNetNode(Node):
         print(f"{GREEN} ============== Ready for next iteration ============== {RESET}", flush=True)
     
     def call_srv_update_interest_map(self,poses,scores):
-        # Esempio: creazione di una grasp
-        # pose = Pose()
-        # pose.position.x = 1.0
-        # pose.position.y = 2.0
-        # pose.position.z = 3.0
-        # pose.orientation.x = 0.0
-        # pose.orientation.y = 0.0
-        # pose.orientation.z = 0.0
-        # pose.orientation.w = 1.0
-
         self.req.grasps = poses
         self.req.scores = scores
 
@@ -112,15 +102,6 @@ def main(args=None):
     rclpy.init(args=args)
     node = GraspNetNode()
 
-    # Start the visualization thread (daemon=True → it dies with the main thread)
-    vis_thread = threading.Thread(target=graspnet_pipeline.visualizer_loop, daemon=True)
-    vis_thread.start()
-    
-    # Test for the service call
-    # rclpy.spin_once(node, timeout_sec=5.0)
-    # # Call the service to update the interest map
-    # node.call_srv_update_interest_map()
-
     # Start ROS2 spin
     try:
         rclpy.spin(node)
@@ -129,50 +110,8 @@ def main(args=None):
     finally:
         with graspnet_pipeline.lock:
             graspnet_pipeline.terminate = True
-        vis_thread.join()
         node.destroy_node()
         rclpy.shutdown()
-
-
-#! -- inizio: [DEBUG] Function to be used to debug (demo_pcd) --
-# def main(args=None):
-#     rclpy.init(args=args)
-#     node = GraspNetNode()
-    
-#     ros_thread = threading.Thread(target=rclpy.spin, args=(node,), daemon=True)
-#     ros_thread.start()
-    
-#     pcd_path = "/home/fabioprez/projects/abb_ros_ws/src/graspnet_ros/gazebo_rectangular_box_res_01_PARTIAL2.pcd"
-    
-#     # TODO: da modificare il ciclo for a seconda di quante iterazioni vogliamo fare
-#     N = np.arange(1, 10, 1)
-#     gg_history = []
-#     pose_array = PoseArray()
-    
-#     for i in N:
-#         print(f" ===== Iteration n.{i} ===== ", flush=True)
-#         gg = graspnet_pipeline.demo_pcd(pcd_path)
-#         gg_history.append(gg[0]) # Save the best grasp only
-        
-#         R = np.array(gg[0].rotation_matrix)
-#         q = Rotation.from_matrix(R)
-#         q_xyzw = q.as_quat()
-    
-#         p = Pose()
-#         p.position = Point(x = float(gg[0].translation[0]), y = float(gg[0].translation[1]), z = float(gg[0].translation[2]))
-#         p.orientation = Quaternion(x = float(q_xyzw[0]), y = float(q_xyzw[1]), z = float(q_xyzw[2]), w = float(q_xyzw[3]))
-        
-#         print(f"translation: ", p.position, flush=True)
-#         print(f"rotation: ", p.orientation, flush=True)
-        
-#         pose_array.poses.append(p)
-        
-        
-    
-#     node.destroy_node()
-#     rclpy.shutdown()
-#     ros_thread.join()
-#! -- fine: [DEBUG] Function to be used to debug (demo_pcd) --
 
 
 if __name__ == '__main__':

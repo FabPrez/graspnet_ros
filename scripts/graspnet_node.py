@@ -102,16 +102,35 @@ def main(args=None):
     rclpy.init(args=args)
     node = GraspNetNode()
 
-    # Start ROS2 spin
+    # -------------------------------------------------
+    # 1) Lancio ROS2 spin in un THREAD secondario (daemon)
+    # -------------------------------------------------
+    def ros_spin():
+        try:
+            rclpy.spin(node)
+        except KeyboardInterrupt:
+            pass
+
+    spin_thread = threading.Thread(target=ros_spin, daemon=True)
+    spin_thread.start()
+
+    # -------------------------------------------------
+    # 2) Nel thread principale chiamo visual_PROVA(), che entra in un loop
+    #    e rimane in attesa di aggiornamenti di 'latest_points_shared'
+    # -------------------------------------------------
     try:
-        rclpy.spin(node)
+        graspnet_pipeline.visual_PROVA()
     except KeyboardInterrupt:
         pass
-    finally:
-        with graspnet_pipeline.lock:
-            graspnet_pipeline.terminate = True
-        node.destroy_node()
-        rclpy.shutdown()
+
+    # Quando l'utente chiude la finestra Open3D, visual_PROVA() esce dal loop,
+    # quindi arrivo qui e disabilito eventuali thread nella pipeline (se necessario).
+    # (Ad esempio, se hai un flag graspnet_pipeline.terminate, settalo qui.)
+
+    node.destroy_node()
+    rclpy.shutdown()
+    # join del thread ROS (non strettamente necessario se è daemon, ma per pulizia):
+    spin_thread.join()
 
 
 if __name__ == '__main__':

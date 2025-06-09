@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-import torch
-import threading
-
 
 """
 This file contains all the parameters the user can set and a brief description for each of them.

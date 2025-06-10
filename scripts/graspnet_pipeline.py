@@ -43,8 +43,9 @@ terminate_visualization = False
 # ------------------------------------------------------
 # Queste variabili verranno condivise tra il callback ROS2 (thread secondario)
 # e la funzione visual_PROVA (thread principale).
-latest_points_shared = None    # numpy.ndarray (N×3) o None
-new_pc_flag = False            # True se c'è una nuvola nuova da visualizzare
+latest_pointcloud_shared = None
+latest_grippers_shared = None
+new_pc_flag = False
 _window_lock = threading.Lock()
 
 
@@ -258,14 +259,15 @@ def run_graspnet_pipeline(object_pts):
     # DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)
     
     
-    global latest_points_shared, new_pc_flag
+    global latest_pointcloud_shared, latest_grippers_shared, new_pc_flag
     # -------------------------
     # 2) AGGIORNAMENTO POINTCLOUD PER VISUALIZZAZIONE
     # -------------------------
     with _window_lock:
         # Copio i nuovi punti nella variabile condivisa
-        latest_points_shared = pts_up.copy()
-        print(f"-> latest_points_shared updated with {latest_points_shared.shape[0]} points", flush=True)
+        latest_pointcloud_shared = copy.deepcopy(pts_up)
+        latest_grippers_shared = copy.deepcopy(gg_up)
+        print(f"-> latest_pointcloud_shared updated with {latest_pointcloud_shared.shape[0]} points", flush=True)
         new_pc_flag = True
     
     return gg_up
@@ -351,20 +353,25 @@ def rotate_grasps_180(grasp_group, center, R):
 def visual_PROVA():
     """
     Rimane in un loop aperto finché l'utente non chiude la finestra.
-    Ogni volta che `new_pc_flag` è True, legge `latest_points_shared`
+    Ogni volta che `new_pc_flag` è True, legge `latest_pointcloud_shared`
     e aggiorna la nuvola di punti in Open3D.
     """
+    global latest_pointcloud_shared, latest_grippers_shared, new_pc_flag
 
-    global latest_points_shared, new_pc_flag
-
-    # Creo il Visualizer e il PointCloud vuoto
+    # Creo il Visualizer
     vis = o3d.visualization.Visualizer()
-    vis.create_window(
-        window_name="PC Viewer (baseline)",
-        width=800,
-        height=600
-    )
-
+    vis.create_window(window_name='GraspNet', width=1280, height=720)
+    
+    # Create and visualize the origin frame O(0,0,0)
+    axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
+    vis.add_geometry(axis)
+    
+    # Create and visualize the ground plane
+    plane_mesh, plane_grid = create_ground_plane(x_range=(-1.5, 1.5), y_range=(-1.5, 1.5), step=1.0)
+    vis.add_geometry(plane_mesh)
+    vis.add_geometry(plane_grid)
+    
+    # Creo il PointCloud vuoto
     pc_geom = o3d.geometry.PointCloud()
     # Inizialmente zero punti
     pc_geom.points = o3d.utility.Vector3dVector(np.zeros((0, 3), dtype=np.float32))
@@ -378,18 +385,18 @@ def visual_PROVA():
 
         # 2) Controllo se c'è una nuvola nuova da disegnare
         with _window_lock:
-            if new_pc_flag and latest_points_shared is not None:
+            if new_pc_flag and (latest_pointcloud_shared is not None) and (latest_grippers_shared is not None):
                 # Aggiorno i punti del PointCloud
-                pts = latest_points_shared
-                pc_geom.points = o3d.utility.Vector3dVector(pts)
-
-                # (Opzionale) azzero i colori
-                pc_geom.colors = o3d.utility.Vector3dVector(
-                    np.zeros((pts.shape[0], 3), dtype=np.float32)
-                )
-
-                # Dico al visualizer di aggiornare questa geometria
+                pc_geom.points = o3d.utility.Vector3dVector(latest_pointcloud_shared)
                 vis.update_geometry(pc_geom)
+                
+                # Aggiorno le geometrie dei gripper
+                latest_grippers_shared.nms()
+                latest_grippers_shared.sort_by_score()
+                latest_grippers_shared = latest_grippers_shared[:50]
+                grippers = latest_grippers_shared.to_open3d_geometry_list()
+                for g in grippers:
+                    vis.add_geometry(g)               
                 
                 # **Qui forzo la camera a riposizionarsi**
                 # in modo che la nuvola entri tutta nel view

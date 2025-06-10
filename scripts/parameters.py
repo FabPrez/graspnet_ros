@@ -46,4 +46,4 @@ voxel_size = 0.01
 collision_thresh = 0.01
 approach_dist = 0.01
 
-num_best_grasps = 10
+num_best_grasps = 5

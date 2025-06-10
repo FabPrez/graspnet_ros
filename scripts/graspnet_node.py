@@ -36,7 +36,8 @@ class GraspNetNode(Node):
         self.cli = self.create_client(UpdateInterestMap, '/update_interest_map')
         self.req = UpdateInterestMap.Request()
         self.num_iterations = 0
-        # structure to store the best grasp for each iteration and its score
+        
+        # Structure to store the best grasp and the score for each iteration
         self.best_grasp_history = []
         self.score_history = []
         
@@ -44,7 +45,7 @@ class GraspNetNode(Node):
     def pointcloud_callback(self, msg):
         self.get_logger().info("Received PointCloud2")
         
-        # print the number of iterations
+        # Print the number of iterations
         print(f"{GREEN} ============== Iteration n.{self.num_iterations} ============== {RESET}", flush=True)
 
         pc = list(pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True))
@@ -56,14 +57,14 @@ class GraspNetNode(Node):
         # Convert the list of tuples into a 2D array (N, 3)
         points = np.array([ [x, y, z] for x, y, z in pc ], dtype=np.float32)
 
-        # Run the pipeline without color
+        # Run the pipeline
         gg = graspnet_pipeline.run_graspnet_pipeline(points)
         
         grasp_pose = [] # the num_best_grasp I want to send to the service
         scores = [] # the scores of the grasps I want to send to the service
         num_grasps = min(len(gg), params.num_best_grasps-1)
+        
         for k in range(num_grasps):
-            
             grasp = gg[k]
             
             R = np.array(grasp.rotation_matrix)
@@ -77,9 +78,12 @@ class GraspNetNode(Node):
             grasp_pose.append(p) 
             scores.append(grasp.score)
         self.num_iterations += 1
-   
-        self.best_grasp_history.append(grasp_pose[0]) # Save the best grasp only
-        self.score_history.append(scores[0]) # Save the score of the best grasp only
+        
+        try:
+            self.best_grasp_history.append(grasp_pose[0]) # Save only the best grasp
+            self.score_history.append(scores[0]) # Save only the score of the best grasp
+        except IndexError as e:
+            self.get_logger().warn(f'No grasp generated: grasp_pose or scores are empty. Error: {e}')
         
         self.call_srv_update_interest_map(grasp_pose, scores)
         
@@ -102,9 +106,7 @@ def main(args=None):
     rclpy.init(args=args)
     node = GraspNetNode()
 
-    # -------------------------------------------------
-    # 1) Lancio ROS2 spin in un THREAD secondario (daemon)
-    # -------------------------------------------------
+    # Start ROS2 spin in a secondary (daemon) THREAD
     def ros_spin():
         try:
             rclpy.spin(node)
@@ -113,23 +115,15 @@ def main(args=None):
 
     spin_thread = threading.Thread(target=ros_spin, daemon=True)
     spin_thread.start()
-
-    # -------------------------------------------------
-    # 2) Nel thread principale chiamo visual_PROVA(), che entra in un loop
-    #    e rimane in attesa di aggiornamenti di 'latest_points_shared'
-    # -------------------------------------------------
+    
+    # Visualize the grasps in Open3D in the main thread
     try:
-        graspnet_pipeline.visual_PROVA()
+        graspnet_pipeline.visualization_in_open3d(params.num_best_grasps)
     except KeyboardInterrupt:
         pass
 
-    # Quando l'utente chiude la finestra Open3D, visual_PROVA() esce dal loop,
-    # quindi arrivo qui e disabilito eventuali thread nella pipeline (se necessario).
-    # (Ad esempio, se hai un flag graspnet_pipeline.terminate, settalo qui.)
-
     node.destroy_node()
     rclpy.shutdown()
-    # join del thread ROS (non strettamente necessario se è daemon, ma per pulizia):
     spin_thread.join()
 
 

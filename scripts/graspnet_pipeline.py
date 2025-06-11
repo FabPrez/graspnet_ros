@@ -4,12 +4,10 @@ import sys
 import copy
 import numpy as np
 import open3d as o3d
-import signal
 import time
 import torch
 import threading
 from graspnetAPI import GraspGroup
-from scipy.spatial.transform import Rotation
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 graspnet_baseline_dir = os.path.join(current_dir, 'graspnet-baseline')

@@ -196,6 +196,9 @@ def run_graspnet_pipeline(object_pts):
         latest_grippers_shared = copy.deepcopy(gg_up)
         new_pc_flag = True
     
+    # DEBUG: visualize the pointcloud and the grasps in Open3D
+    # DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)
+    
     return gg_up
 
 

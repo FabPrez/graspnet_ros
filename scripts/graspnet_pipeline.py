@@ -105,20 +105,13 @@ def run_graspnet_pipeline(object_pts):
     z_plane = 0.20
     
     # Compute the plane parameters
-    N = 3000 # number of points for the plane cloud
+    N = 1000 # number of points for the plane cloud
     min_x, max_x = np.min(object_pts[:, 0]), np.max(object_pts[:, 0])
     min_y, max_y = np.min(object_pts[:, 1]), np.max(object_pts[:, 1])
     dx = max_x - min_x
     dy = max_y - min_y
-    if (dx < dy):
-        side_length_x = 1.5 * dx
-        side_length_y =  1.5 * dy
-    elif(dx == dy):
-        side_length_x =  1.5 * dx
-        side_length_y =  1.5 * dy 
-    else:
-        side_length_x =  1.5 * dx
-        side_length_y = 1.5 * dy
+    side_length_x = 2.0 * dx
+    side_length_y = 2.0 * dy
     
     ratio = side_length_x / side_length_y
     num_x = int(round(np.sqrt(N * ratio)))
@@ -195,6 +188,9 @@ def run_graspnet_pipeline(object_pts):
         latest_pointcloud_shared = copy.deepcopy(pcd_up)
         latest_grippers_shared = copy.deepcopy(gg_up)
         new_pc_flag = True
+    
+    # DEBUG: print on the screen the object_id
+    print(f"Object ID: {gg_up.object_ids}", flush=True)
     
     # DEBUG: visualize the pointcloud and the grasps in Open3D
     # DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)

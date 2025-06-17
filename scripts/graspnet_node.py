@@ -62,7 +62,7 @@ class GraspNetNode(Node):
         
         grasp_pose = [] # the num_best_grasp I want to send to the service
         scores = [] # the scores of the grasps I want to send to the service
-        num_grasps = min(len(gg), params.num_best_grasps-1)
+        num_grasps = min(len(gg), params.num_best_grasps)
         
         for k in range(num_grasps):
             grasp = gg[k]

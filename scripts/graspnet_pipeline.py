@@ -105,20 +105,20 @@ def run_graspnet_pipeline(object_pts):
     z_plane = 0.20
     
     # Compute the plane parameters
-    N = 400 # number of points for the plane cloud
+    N = 3000 # number of points for the plane cloud
     min_x, max_x = np.min(object_pts[:, 0]), np.max(object_pts[:, 0])
     min_y, max_y = np.min(object_pts[:, 1]), np.max(object_pts[:, 1])
     dx = max_x - min_x
     dy = max_y - min_y
     if (dx < dy):
-        side_length_x = 3.0 * dx
-        side_length_y = 1.5 * dy
+        side_length_x = 1.5 * dx
+        side_length_y =  1.5 * dy
     elif(dx == dy):
-        side_length_x = 1.5 * dx
-        side_length_y = 1.5 * dy 
+        side_length_x =  1.5 * dx
+        side_length_y =  1.5 * dy 
     else:
-        side_length_x = 1.5 * dx
-        side_length_y = 3.0 * dy
+        side_length_x =  1.5 * dx
+        side_length_y = 1.5 * dy
     
     ratio = side_length_x / side_length_y
     num_x = int(round(np.sqrt(N * ratio)))

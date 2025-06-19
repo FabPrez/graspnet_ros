@@ -2,6 +2,7 @@
 import os
 import sys
 import numpy as np
+import parameters as params
 import rclpy
 import sensor_msgs_py.point_cloud2 as pc2
 import threading
@@ -9,7 +10,6 @@ from geometry_msgs.msg import Pose, PoseArray, Point, Quaternion
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
 from scipy.spatial.transform import Rotation
-import parameters as params
 from nbv_interfaces.srv import UpdateInterestMap
 
 RED = "\033[91m"
@@ -46,7 +46,7 @@ class GraspNetNode(Node):
         self.get_logger().info("Received PointCloud2")
         
         # Print the number of iterations
-        print(f"{GREEN} ============== Iteration n.{self.num_iterations} ============== {RESET}", flush=True)
+        print(f"{GREEN} ============== Iteration n.{self.num_iterations+1} ============== {RESET}", flush=True)
 
         pc = list(pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True))
 
@@ -86,8 +86,7 @@ class GraspNetNode(Node):
             self.get_logger().warn(f'No grasp generated: grasp_pose or scores are empty. Error: {e}')
         
         self.call_srv_update_interest_map(grasp_pose, scores)
-        
-        print(f"{GREEN} ============== Ready for next iteration ============== {RESET}", flush=True)
+
     
     def call_srv_update_interest_map(self,poses,scores):
         self.req.grasps = poses

@@ -47,12 +47,14 @@ def get_net():
                    cylinder_radius=cylinder_radius, hmin=hmin, hmax_list=hmax_list, is_training=False)
     net.to(device)
     
-    # Load checkpoint
-    checkpoint = torch.load(checkpoint_path)
-    net.load_state_dict(checkpoint['model_state_dict'])
-    print(f"-> loaded checkpoint {checkpoint_path}", flush=True)
-    net.eval()
-    return net
+    # Load checkpoint folder
+    try:
+        checkpoint = torch.load(checkpoint_path)
+        net.load_state_dict(checkpoint['model_state_dict'])
+        net.eval()
+        return net
+    except Exception:
+        raise
 
 
 def get_grasps(net, end_points):
@@ -188,9 +190,6 @@ def run_graspnet_pipeline(object_pts):
         latest_pointcloud_shared = copy.deepcopy(pcd_up)
         latest_grippers_shared = copy.deepcopy(gg_up)
         new_pc_flag = True
-    
-    # DEBUG: print on the screen the object_id
-    print(f"Object ID: {gg_up.object_ids}", flush=True)
     
     # DEBUG: visualize the pointcloud and the grasps in Open3D
     # DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)

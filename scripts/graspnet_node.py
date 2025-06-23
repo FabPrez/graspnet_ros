@@ -93,6 +93,7 @@ class GraspNetNode(Node):
         self.req.scores = scores
 
         future = self.cli.call_async(self.req)
+        self.get_logger().info(f'Calling service /update_interest_map')
         # rclpy.spin_until_future_complete(self, future)
 
         # if future.result() is not None:

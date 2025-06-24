@@ -32,7 +32,7 @@ class GraspNetNode(Node):
         
         self.subscription = self.create_subscription(
             PointCloud2, '/pc_octomap_filtered', self.pointcloud_callback, 10)
-        self.get_logger().info("GraspNetNode started, listening for pointclouds...")
+        self.get_logger().info(f"{GREEN}GraspNetNode started, listening for pointclouds...{RESET}")
         self.cli = self.create_client(UpdateInterestMap, '/update_interest_map')
         self.req = UpdateInterestMap.Request()
         self.num_iterations = 0

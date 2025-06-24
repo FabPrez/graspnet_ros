@@ -31,7 +31,7 @@ class GraspNetNode(Node):
         super().__init__('graspnet_node')
         
         self.subscription = self.create_subscription(
-            PointCloud2, '/octomap_point_cloud_centers', self.pointcloud_callback, 10)
+            PointCloud2, '/pc_octomap_filtered', self.pointcloud_callback, 10)
         self.get_logger().info("GraspNetNode started, listening for pointclouds...")
         self.cli = self.create_client(UpdateInterestMap, '/update_interest_map')
         self.req = UpdateInterestMap.Request()

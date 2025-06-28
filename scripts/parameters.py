@@ -9,9 +9,9 @@ This file contains all the parameters the user can set and a brief description f
     - num_angle = (default: 12) # for each view, number of angles searched by the neural network to search for grasps #! CANNOT be changed
     - num_depth = (default: 4) # number of bins-cylinders #! CANNOT be changed
     - cylinder_radius = (default: 0.05) # base radius of each bin-cylinder
-    - finger_width = (default: 0.01) # width of the gripper fingers (assuming square cross-section)
-    - finger_length = (default: 0.06) # length of the gripper fingers
-    - GRASP_MAX_WIDTH = (default: 0.10) # maximum gripper opening (inner faces)
+    - finger_width = (default: 0.01) # width of the gripper fingers (assuming square cross-section) # TODO: CHANGED BOTH IN nbv_params.yaml AND IN parameters.py
+    - finger_length = (default: 0.06) # length of the gripper fingers # TODO: CHANGED BOTH IN nbv_params.yaml AND IN parameters.py
+    - GRASP_MAX_WIDTH = (default: 0.10) # maximum gripper opening (inner faces) # TODO: CHANGED BOTH IN nbv_params.yaml AND IN parameters.py
     - GRASP_MIN_WIDTH = (default: 0) # minimum gripper opening (inner faces)
     - GRASP_MAX_TOLERANCE = (default: 0.05)
     - THRESH_GOOD = (default: 0.7) # threshold to consider a grasp as good

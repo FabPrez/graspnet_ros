@@ -37,10 +37,6 @@ class GraspNetNode(Node):
         self.req = UpdateInterestMap.Request()
         self.num_iterations = 0
         
-        # Structure to store the best grasp and the score for each iteration
-        self.best_grasp_history = []
-        self.score_history = []
-        
 
     def pointcloud_callback(self, msg):
         self.get_logger().info("Received PointCloud2")
@@ -78,12 +74,6 @@ class GraspNetNode(Node):
             grasp_pose.append(p) 
             scores.append(grasp.score)
         self.num_iterations += 1
-        
-        try:
-            self.best_grasp_history.append(grasp_pose[0]) # Save only the best grasp
-            self.score_history.append(scores[0]) # Save only the score of the best grasp
-        except IndexError as e:
-            self.get_logger().warn(f'No grasp generated: grasp_pose or scores are empty. Error: {e}')
         
         self.call_srv_update_interest_map(grasp_pose, scores)
 

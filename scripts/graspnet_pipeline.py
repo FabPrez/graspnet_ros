@@ -100,56 +100,61 @@ def run_graspnet_pipeline(object_pts):
     """
     net = get_net()
     
+    # ! ========== ========== ========== TODO: inizio: VERIFICARE CHE NON SERVA ========== ========== ==========
+    # #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_plane
+    # # Compute the center
+    # center = np.mean(object_pts, axis=0)
+    # z_plane = 0.20
     
-    #! GENERATE THE PLANE CENTERED AT C(center[0], center[1]) AT A HEIGHT Z = z_plane
-    # Compute the center
-    center = np.mean(object_pts, axis=0)
-    z_plane = 0.20
+    # # Compute the plane parameters
+    # N = 1000 # number of points for the plane cloud
+    # min_x, max_x = np.min(object_pts[:, 0]), np.max(object_pts[:, 0])
+    # min_y, max_y = np.min(object_pts[:, 1]), np.max(object_pts[:, 1])
+    # dx = max_x - min_x
+    # dy = max_y - min_y
+    # side_length_x = 2.0 * dx
+    # side_length_y = 2.0 * dy
     
-    # Compute the plane parameters
-    N = 1000 # number of points for the plane cloud
-    min_x, max_x = np.min(object_pts[:, 0]), np.max(object_pts[:, 0])
-    min_y, max_y = np.min(object_pts[:, 1]), np.max(object_pts[:, 1])
-    dx = max_x - min_x
-    dy = max_y - min_y
-    side_length_x = 2.0 * dx
-    side_length_y = 2.0 * dy
+    # ratio = side_length_x / side_length_y
+    # num_x = int(round(np.sqrt(N * ratio)))
+    # num_x = max(num_x, 2)
+    # num_y = int(np.ceil(N / num_x))
+    # num_y = max(num_y, 2)
     
-    ratio = side_length_x / side_length_y
-    num_x = int(round(np.sqrt(N * ratio)))
-    num_x = max(num_x, 2)
-    num_y = int(np.ceil(N / num_x))
-    num_y = max(num_y, 2)
-    
-    xs = np.linspace(center[0] - side_length_x / 2.0, center[0] + side_length_x / 2.0, num_x)
-    ys = np.linspace(center[1] - side_length_y / 2.0, center[1] + side_length_y / 2.0, num_y)
-    xx, yy = np.meshgrid(xs, ys)
+    # xs = np.linspace(center[0] - side_length_x / 2.0, center[0] + side_length_x / 2.0, num_x)
+    # ys = np.linspace(center[1] - side_length_y / 2.0, center[1] + side_length_y / 2.0, num_y)
+    # xx, yy = np.meshgrid(xs, ys)
 
-    xx_flat = xx.flatten()
-    yy_flat = yy.flatten()
-    zz_flat = np.full_like(xx_flat, z_plane)
+    # xx_flat = xx.flatten()
+    # yy_flat = yy.flatten()
+    # zz_flat = np.full_like(xx_flat, z_plane)
 
-    plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
-    print(f"-> generated plane with {plane_pts.shape[0]} points")
+    # plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
+    # print(f"-> generated plane with {plane_pts.shape[0]} points")
     
     
-    #! COMBINE THE TWO POINTCLOUDS
-    pts_up = np.vstack([object_pts, plane_pts])
-    pcd_up = o3d.geometry.PointCloud()
-    pcd_up.points = o3d.utility.Vector3dVector(pts_up)
+    # #! COMBINE THE TWO POINTCLOUDS
+    # pts_up = np.vstack([object_pts, plane_pts])
+    # pcd_up = o3d.geometry.PointCloud()
+    # pcd_up.points = o3d.utility.Vector3dVector(pts_up)
     
     
-    #! ROTATE THE TWO POINTCLOUDS
-    result = rotate_pointcloud_180(pts_up, center)
-    # Extract the rotated pointcloud only
-    pts_down = result[0]
-    # Extract the rotation matrix
-    R = result[1]
-    # Extract the rotation_axis, min_proj and max_proj only
-    rotation_axis = result[2]
-    min_proj = result[3]
-    max_proj = result[4]
+    # #! ROTATE THE TWO POINTCLOUDS
+    # result = rotate_pointcloud_180(pts_up, center)
+    # # Extract the rotated pointcloud only
+    # pts_down = result[0]
+    # # Extract the rotation matrix
+    # R = result[1]
+    # # Extract the rotation_axis, min_proj and max_proj only
+    # rotation_axis = result[2]
+    # min_proj = result[3]
+    # max_proj = result[4]
     
+    # pcd_down = o3d.geometry.PointCloud()
+    # pcd_down.points = o3d.utility.Vector3dVector(pts_down)
+    # ! ========== ========== ========== TODO: fine: VERIFICARE CHE NON SERVA ========== ========== ==========
+    
+    pts_down = object_pts.copy()
     pcd_down = o3d.geometry.PointCloud()
     pcd_down.points = o3d.utility.Vector3dVector(pts_down)
     
@@ -176,25 +181,37 @@ def run_graspnet_pipeline(object_pts):
     print(f"Total number of grasps AFTER collision check: {len(gg_down)}", flush=True)
     gg_down = gg_down[:num_best_grasps] # Limit to the top num_best_grasps grasps
     
-    
-    #! ROTATE THE GRASPS
-    gg_up = copy.deepcopy(gg_down)
-    gg_up = rotate_grasps_180(gg_up, center, R)
-    
-    
     #! VISUALIZE IN OPEN3D
     global latest_pointcloud_shared, latest_grippers_shared, new_pc_flag
     latest_pointcloud_shared = None
     latest_grippers_shared = None
     with _window_lock:
-        latest_pointcloud_shared = copy.deepcopy(pcd_up)
-        latest_grippers_shared = copy.deepcopy(gg_up)
+        latest_pointcloud_shared = copy.deepcopy(pcd_down)
+        latest_grippers_shared = copy.deepcopy(gg_down)
         new_pc_flag = True
+    
+    return gg_down
+    
+    # ! ========== ========== ========== TODO: inizio: VERIFICARE CHE NON SERVA ========== ========== ==========
+    # #! ROTATE THE GRASPS
+    # gg_up = copy.deepcopy(gg_down)
+    # gg_up = rotate_grasps_180(gg_up, center, R)
+    
+    
+    # #! VISUALIZE IN OPEN3D
+    # global latest_pointcloud_shared, latest_grippers_shared, new_pc_flag
+    # latest_pointcloud_shared = None
+    # latest_grippers_shared = None
+    # with _window_lock:
+    #     latest_pointcloud_shared = copy.deepcopy(pcd_up)
+    #     latest_grippers_shared = copy.deepcopy(gg_up)
+    #     new_pc_flag = True
     
     # DEBUG: visualize the pointcloud and the grasps in Open3D
     # DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)
     
-    return gg_up
+    # return gg_up
+    # ! ========== ========== ========== TODO: fine: VERIFICARE CHE NON SERVA ========== ========== ==========
 
 
 def rotate_pointcloud_180(points, center):

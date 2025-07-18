@@ -42,8 +42,17 @@ THRESH_GOOD = 0.7
 THRESH_BAD = 0.1
 
 # ----- Parameters for collision detection -----
-voxel_size = 0.01
+voxel_size = 0.01 #! voxel_size (in parameters.py) == resolution (in nbv_params.yaml)
 collision_thresh = 0.01
 approach_dist = 0.01
 
 num_best_grasps = 10
+
+
+# ----- Parameters to manually create the plane -----
+min_x = 0.60
+max_x = 1.00
+min_y = -0.25
+max_y = 0.25
+# z_plane = 0.20 # <-- SIMULATION environment
+z_plane = -0.06 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params.yaml)

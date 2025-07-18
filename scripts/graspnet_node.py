@@ -55,6 +55,7 @@ class GraspNetNode(Node):
 
         # Run the pipeline
         gg = graspnet_pipeline.run_graspnet_pipeline(points)
+        # gg = graspnet_pipeline.run_graspnet_pipeline_SENZA_PIANO_MANUALE(points)
         
         grasp_pose = [] # the num_best_grasp I want to send to the service
         scores = [] # the scores of the grasps I want to send to the service

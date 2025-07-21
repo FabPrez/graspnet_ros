@@ -50,9 +50,9 @@ num_best_grasps = 10
 
 
 # ----- Parameters to manually create the plane -----
-min_x = 0.60
-max_x = 1.00
-min_y = -0.25
-max_y = 0.25
+min_x = 2.00
+max_x = 2.50
+min_y = -1.00
+max_y = -0.50
 # z_plane = 0.20 # <-- SIMULATION environment
-z_plane = -0.06 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params.yaml)
+z_plane = 0.06 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params.yaml)

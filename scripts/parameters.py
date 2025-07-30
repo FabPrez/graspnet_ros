@@ -18,12 +18,12 @@ This file contains all the parameters the user can set and a brief description f
     - THRESH_BAD = (default: 0.1) # threshold to consider a grasp as bad
     - voxel_size = (default: 0.005) # voxel size for point cloud downsampling
     - collision_thresh = (default: 0.01) # collision threshold for the gripper, degree of gripper penetration into the point cloud
-    - approach_dist = (default: 0.05) distance the gripper approaches along the approach direction before closing the fingers
+    - approach_dist = (default: 0.05) distance along the approach direction between the grasping point (center of the grasp) and the gripper point (center of the gripper, at the fingers tip)
     - num_best_grasps = (default: 50) number of best grasps selected and visualized
 """
 
 
-# ----- Parameters -----
+# ----- Parameters for the net -----
 hmin = -0.01
 hmax_list = [0.01, 0.02, 0.03, 0.04]
 num_point = 2000
@@ -32,10 +32,10 @@ num_angle = 12
 num_depth = len(hmax_list)
 cylinder_radius = 0.02
 
-# ----- Parameters for gripper -----
-finger_width = 0.01
-finger_length = 0.06
-GRASP_MAX_WIDTH = 0.08
+# ----- Parameters for the gripper -----
+finger_width = 0.02
+finger_length = 0.07
+GRASP_MAX_WIDTH = 0.085
 GRASP_MIN_WIDTH = 0
 GRASP_MAX_TOLERANCE = 0.05
 THRESH_GOOD = 0.7
@@ -44,15 +44,15 @@ THRESH_BAD = 0.1
 # ----- Parameters for collision detection -----
 voxel_size = 0.01 #! voxel_size (in parameters.py) == resolution (in nbv_params.yaml)
 collision_thresh = 0.01
-approach_dist = 0.01
+approach_dist = 0.03
 
+# ----- Parameters for visualization (Open3D) -----
 num_best_grasps = 10
-
 
 # ----- Parameters to manually create the plane -----
 min_x = 2.00
 max_x = 2.50
 min_y = -1.00
 max_y = -0.50
-# z_plane = 0.20 # <-- SIMULATION environment
-z_plane = 0.06 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params.yaml)
+# z_plane = 0.20 # <-- SIMULATION environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_simEnv.yaml)
+z_plane = 0.06 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_realEnv.yaml)

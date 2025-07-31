@@ -160,9 +160,22 @@ def run_graspnet_pipeline(object_pts):
     print(f"Total number of grasps AFTER collision check: {len(gg_down)}", flush=True)
     gg_down = gg_down[:num_best_grasps] # Limit to the top num_best_grasps grasps
     
+    
     #! ROTATE THE GRASPS
     gg_up = copy.deepcopy(gg_down)
     gg_up = rotate_grasps_180(gg_up, center, R)
+    
+    
+    #! FILTER OUT THE GRASPS BELONGING TO THE PLANE
+    filtered_grasps = []
+    
+    for grasp in gg_up:
+        if grasp.translation[2] >= z_plane + z_plane_threshold:
+            print(f"Grasp z-translation: {grasp.translation[2]}", flush=True)
+            filtered_grasps.append(grasp)
+    
+    print(f"Total number of grasps AFTER filtering: kept {len(filtered_grasps)} out of {len(gg_up)} grasps", flush=True)
+    gg_up_filtered = filtered_grasps
     
     
     #! VISUALIZE IN OPEN3D
@@ -171,13 +184,13 @@ def run_graspnet_pipeline(object_pts):
     latest_grippers_shared = None
     with _window_lock:
         latest_pointcloud_shared = copy.deepcopy(pcd_up)
-        latest_grippers_shared = copy.deepcopy(gg_up)
+        latest_grippers_shared = copy.deepcopy(gg_up_filtered)
         new_pc_flag = True
     
     # DEBUG: visualize the pointcloud and the grasps in Open3D
-    # DEBUG_visualization_in_open3d(gg_up, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)
+    # DEBUG_visualization_in_open3d(gg_up_filtered, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)
     
-    return gg_up
+    return gg_up_filtered
 
 
 def run_graspnet_pipeline_SENZA_PIANO_MANUALE(object_pts):

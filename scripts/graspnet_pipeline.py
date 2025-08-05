@@ -171,7 +171,6 @@ def run_graspnet_pipeline(object_pts):
     
     for grasp in gg_up:
         if grasp.translation[2] >= z_plane + z_plane_threshold:
-            print(f"Grasp z-translation: {grasp.translation[2]}", flush=True)
             filtered_grasps.append(grasp)
     
     print(f"Total number of grasps AFTER filtering: kept {len(filtered_grasps)} out of {len(gg_up)} grasps", flush=True)

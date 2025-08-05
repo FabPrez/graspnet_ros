@@ -46,8 +46,8 @@ THRESH_BAD = 0.1
 
 # ----- Parameters for collision detection -----
 voxel_size = 0.01 #! voxel_size (in parameters.py) == resolution (in nbv_params.yaml)
-collision_thresh = 0.01
-approach_dist = 0.03
+collision_thresh = 0.005
+approach_dist = 0.04
 
 # ----- Parameters for visualization (Open3D) -----
 num_best_grasps = 10
@@ -56,20 +56,20 @@ num_best_grasps = 10
 #! ========== SIMULATED ENVIRONMENT PARAMETERS ==========
 #! ======================================================
 # ----- Parameters to manually create the plane -----
-min_x = 0.40
-max_x = 0.90
-min_y = -0.25
-max_y = 0.25
-z_plane = 0.20 # <-- SIMULATION environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_simEnv.yaml)
-z_plane_threshold = 0.01
+# min_x = 0.40
+# max_x = 0.90
+# min_y = -0.25
+# max_y = 0.25
+# z_plane = 0.20 # <-- SIMULATION environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_simEnv.yaml)
+# z_plane_threshold = 0.01
 
 #! ======================================================
 #! ============ REAL ENVIRONMENT PARAMETERS =============
 #! ======================================================
 # ----- Parameters to manually create the plane -----
-# min_x = 2.00
-# max_x = 2.50
-# min_y = -1.00
-# max_y = -0.50
-# z_plane = 0.06 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_realEnv.yaml)
-# z_plane_threshold = 0.01
+min_x = 2.00
+max_x = 2.50
+min_y = -1.00
+max_y = -0.50
+z_plane = 0.06 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_realEnv.yaml)
+z_plane_threshold = 0.01

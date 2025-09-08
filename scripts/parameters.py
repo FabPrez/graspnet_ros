@@ -45,7 +45,7 @@ THRESH_GOOD = 0.7
 THRESH_BAD = 0.1
 
 # ----- Parameters for collision detection -----
-voxel_size = 0.01 #! voxel_size (in parameters.py) == resolution (in nbv_params.yaml)
+voxel_size = 0.0075 #! voxel_size (in parameters.py) == resolution (in nbv_params.yaml)
 collision_thresh = 0.005
 approach_dist = 0.04
 

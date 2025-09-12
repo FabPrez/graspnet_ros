@@ -114,7 +114,7 @@ def run_graspnet_pipeline(object_pts):
     zz_flat = np.full_like(xx_flat, z_plane)
 
     plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
-    print(f"-> generated plane with {plane_pts.shape[0]} points")
+    # print(f"-> generated plane with {plane_pts.shape[0]} points")
     
     
     #! COMBINE THE TWO POINTCLOUDS
@@ -155,10 +155,15 @@ def run_graspnet_pipeline(object_pts):
     # 4) Generate the grasps
     gg_down = get_grasps(net, end_points)
     print(f"Total number of grasps generated: {len(gg_down)}", flush=True)
+    
+    # 5) Verify collisions
     if collision_thresh > 0:
         gg_down = collision_detection(gg_down, np.array(pcd_down.points))
     print(f"Total number of grasps AFTER collision check: {len(gg_down)}", flush=True)
+    
+    # 6) Select the first num_best_grasps grasps
     gg_down = gg_down[:num_best_grasps] # Limit to the top num_best_grasps grasps
+    print(f"Selecting only the first {min(len(gg_down), num_best_grasps)} grasps", flush=True)
     
     
     #! ROTATE THE GRASPS
@@ -167,14 +172,14 @@ def run_graspnet_pipeline(object_pts):
     
     
     #! FILTER OUT THE GRASPS BELONGING TO THE PLANE
-    filtered_grasps = []
+    post_filtered_grasps = []
     
     for grasp in gg_up:
         if grasp.translation[2] >= z_plane + z_plane_threshold:
-            filtered_grasps.append(grasp)
+            post_filtered_grasps.append(grasp)
     
-    print(f"Total number of grasps AFTER filtering: kept {len(filtered_grasps)} out of {len(gg_up)} grasps", flush=True)
-    gg_up_filtered = filtered_grasps
+    print(f"Total number of grasps AFTER filtering: kept {len(post_filtered_grasps)} out of {len(gg_up)} grasps", flush=True)
+    gg_up_filtered = post_filtered_grasps
     
     
     #! VISUALIZE IN OPEN3D
@@ -185,9 +190,6 @@ def run_graspnet_pipeline(object_pts):
         latest_pointcloud_shared = copy.deepcopy(pcd_up)
         latest_grippers_shared = copy.deepcopy(gg_up_filtered)
         new_pc_flag = True
-    
-    # DEBUG: visualize the pointcloud and the grasps in Open3D
-    # DEBUG_visualization_in_open3d(gg_up_filtered, pcd_up, gg_down, pcd_down, rotation_axis, center, min_proj, max_proj)
     
     return gg_up_filtered
 

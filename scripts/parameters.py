@@ -41,13 +41,13 @@ finger_length = 0.07
 GRASP_MAX_WIDTH = 0.085
 GRASP_MIN_WIDTH = 0
 GRASP_MAX_TOLERANCE = 0.05
-THRESH_GOOD = 0.7
-THRESH_BAD = 0.1
+THRESH_GOOD = 0.8
+THRESH_BAD = 0.2
 
 # ----- Parameters for collision detection -----
 voxel_size = 0.0075 #! voxel_size (in parameters.py) == resolution (in nbv_params.yaml)
-collision_thresh = 0.005
-approach_dist = 0.04
+collision_thresh = 0.0025 # prima: 0.005
+approach_dist = 0.06 # prima: 0.04, 0.05
 
 # ----- Parameters for visualization (Open3D) -----
 num_best_grasps = 10

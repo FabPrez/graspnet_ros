@@ -39,7 +39,7 @@ class GraspNetNode(Node):
         
 
     def pointcloud_callback(self, msg):
-        self.get_logger().info("Received PointCloud2")
+        # self.get_logger().info("Received PointCloud2")
         
         # Print the number of iterations
         print(f"{GREEN} ============== Iteration n.{self.num_iterations+1} ============== {RESET}", flush=True)
@@ -84,13 +84,7 @@ class GraspNetNode(Node):
         self.req.scores = scores
 
         future = self.cli.call_async(self.req)
-        self.get_logger().info(f'Calling service /update_interest_map')
-        # rclpy.spin_until_future_complete(self, future)
-
-        # if future.result() is not None:
-        #     self.get_logger().info(f'Service response: success = {future.result().success}')
-        # else:
-        #     self.get_logger().error('Service call failed')
+        # self.get_logger().info(f'Calling service /update_interest_map')
 
 
 def main(args=None):

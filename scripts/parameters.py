@@ -71,5 +71,5 @@ min_x = 2.00
 max_x = 2.50
 min_y = -1.00
 max_y = -0.50
-z_plane = 0.06 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_realEnv.yaml)
+z_plane = 0.09 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_realEnv.yaml)
 z_plane_threshold = 0.01

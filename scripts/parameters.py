@@ -47,7 +47,7 @@ THRESH_BAD = 0.2
 # ----- Parameters for collision detection -----
 voxel_size = 0.0075 #! voxel_size (in parameters.py) == resolution (in nbv_params.yaml)
 collision_thresh = 0.0025 # prima: 0.005
-approach_dist = 0.06 # prima: 0.04, 0.05
+approach_dist = 0.04 # prima: 0.06, 0.05
 
 # ----- Parameters for visualization (Open3D) -----
 num_best_grasps = 10
@@ -71,5 +71,5 @@ min_x = 2.00
 max_x = 2.50
 min_y = -1.00
 max_y = -0.50
-z_plane = 0.09 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_realEnv.yaml)
+z_plane = 0.06 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_realEnv.yaml)
 z_plane_threshold = 0.01

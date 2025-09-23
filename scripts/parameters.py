@@ -21,8 +21,8 @@ This file contains all the parameters the user can set and a brief description f
     - approach_dist = (default: 0.05) distance along the approach direction between the grasping point (center of the grasp) and the gripper point (center of the gripper, at the fingers tip)
     - num_best_grasps = (default: 50) number of best grasps selected and visualized
     - min|max_x|y = mimium | maximum point along x | y direction of the manually generated plane
-    - z_plane = height of the manual generated plane
-    - z_plane_threshold = (default 0.01) filter out all the grasps generated on the plane (i.e. all the grasps in between z_plane-z_plane_threshold < z < z_plane+z_plane_threshold are filtered out)
+    - z_plane_max_height = 
+    - 
 """
 
 
@@ -46,8 +46,8 @@ THRESH_BAD = 0.2
 
 # ----- Parameters for collision detection -----
 voxel_size = 0.0075 #! voxel_size (in parameters.py) == resolution (in nbv_params.yaml)
-collision_thresh = 0.0025 # prima: 0.005
-approach_dist = 0.04 # prima: 0.06, 0.05
+collision_thresh = 0.0025
+approach_dist = 0.04
 
 # ----- Parameters for visualization (Open3D) -----
 num_best_grasps = 10
@@ -55,21 +55,11 @@ num_best_grasps = 10
 #! ======================================================
 #! ========== SIMULATED ENVIRONMENT PARAMETERS ==========
 #! ======================================================
-# ----- Parameters to manually create the plane -----
-# min_x = 0.40
-# max_x = 0.90
-# min_y = -0.25
-# max_y = 0.25
-# z_plane = 0.20 # <-- SIMULATION environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_simEnv.yaml)
-# z_plane_threshold = 0.01
+# z_plane_max_height = 0.21 # <-- SIMULATION environment
+# z_grasp_min_height = 0.01
 
 #! ======================================================
 #! ============ REAL ENVIRONMENT PARAMETERS =============
 #! ======================================================
-# ----- Parameters to manually create the plane -----
-min_x = 2.00
-max_x = 2.50
-min_y = -1.00
-max_y = -0.50
-z_plane = 0.06 # <-- REAL environment #! z_plane (in parameters.py) == ws_filter__min_z (in nbv_params_realEnv.yaml)
-z_plane_threshold = 0.01
+z_plane_max_height = 0.04 # <-- REAL environment
+z_grasp_min_height = 0.07 #! z_grasp_min_height (in parameters.py) == ws_filter__min_z (in nbv_params.yaml)

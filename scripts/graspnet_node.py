@@ -31,7 +31,7 @@ class GraspNetNode(Node):
         super().__init__('graspnet_node')
         
         self.subscription = self.create_subscription(
-            PointCloud2, '/pc_octomap_filtered', self.pointcloud_callback, 10)
+            PointCloud2, '/pc_octomap_occupancy_filter', self.pointcloud_callback, 10)
         self.get_logger().info(f"{GREEN}GraspNetNode started, listening for pointclouds...{RESET}")
         self.cli = self.create_client(UpdateInterestMap, '/update_interest_map')
         self.req = UpdateInterestMap.Request()
@@ -55,7 +55,6 @@ class GraspNetNode(Node):
 
         # Run the pipeline
         gg = graspnet_pipeline.run_graspnet_pipeline(points)
-        # gg = graspnet_pipeline.run_graspnet_pipeline_SENZA_PIANO_MANUALE(points)
         
         grasp_pose = [] # the num_best_grasp I want to send to the service
         scores = [] # the scores of the grasps I want to send to the service

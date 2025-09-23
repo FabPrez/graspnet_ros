@@ -95,35 +95,69 @@ def run_graspnet_pipeline(object_pts):
     Computes grasp candidates and updates the visualization window.
     
     :param object_pts: np.ndarray of shape (N, 3) with XYZ coordinates
-    
-    :return: gg_up = GraspGroup containing the top-ranked grasp candidates.
+    :return: gg_up_filtered = list/GraspGroup with post-filtered top-ranked grasp candidates.
     """
     net = get_net()
     
-    #! GENERATE THE PLANE AT A HEIGHT Z = z_plane
-    # Compute the center
-    center = np.mean(object_pts, axis=0)
+    #! SPLIT THE POINT CLOUD: PLANE PCD AND OBJECTS PCD
+    mask_plane = object_pts[:, 2] <= z_plane_max_height
+    plane_pts_raw = object_pts[mask_plane]
+    object_pts_only = object_pts[~mask_plane]
+
+    if plane_pts_raw.shape[0] < 3:
+        print("[WARN] Too few plane points to estimate a plane. Fallback: constant z plane.", flush=True)
+        a = b = 0.0
+        def z_of_xy(_x, _y):
+            return np.full_like(_x, fill_value=z_plane_max_height, dtype=float)
+    else:
+        # Estimate the plane via PCA/SVD
+        C = plane_pts_raw.mean(axis=0)
+        Q = plane_pts_raw - C
+        _, _, Vt = np.linalg.svd(Q, full_matrices=False)
+        n = Vt[-1, :]  # normal (a, b, c)
+        
+        # Normalize for stability
+        # plane in the form ax+by+cz + d = 0 with d = -n·C
+        n = n / (np.linalg.norm(n) + 1e-12)
+        a, b, c = n
+        d = -np.dot(n, C)
+        
+        # Gestione di eventuale c ≈ 0 (piano quasi verticale): fallback a piano costante
+        if abs(c) < 1e-6:
+            print("[WARN] Piano stimato quasi verticale (|c| ~ 0). Fallback: piano a z costante.", flush=True)
+            a = b = 0.0
+            def z_of_xy(_x, _y):
+                return np.full_like(_x, fill_value=z_plane_max_height, dtype=float)
+        else:
+            # z(x,y) = (-d - a x - b y) / c
+            def z_of_xy(_x, _y):
+                return (-d - a * _x - b * _y) / c
     
-    # Compute the plane parameters   
-    xs = np.arange(min_x, max_x + voxel_size, voxel_size)
-    ys = np.arange(min_y, max_y + voxel_size, voxel_size)
+    
+    #! GENERATE THE PLANE
+    # Build "calibrated" plane as an interpolated grid
+    x_min, y_min = object_pts[:, 0].min(), object_pts[:, 1].min()
+    x_max, y_max = object_pts[:, 0].max(), object_pts[:, 1].max()
+    xs = np.arange(x_min, x_max + voxel_size, voxel_size)
+    ys = np.arange(y_min, y_max + voxel_size, voxel_size)
     xx, yy = np.meshgrid(xs, ys)
 
-    xx_flat = xx.flatten()
-    yy_flat = yy.flatten()
-    zz_flat = np.full_like(xx_flat, z_plane)
+    xx_flat = xx.ravel()
+    yy_flat = yy.ravel()
+    zz_flat = z_of_xy(xx_flat, yy_flat)
 
     plane_pts = np.stack([xx_flat, yy_flat, zz_flat], axis=1)
-    # print(f"-> generated plane with {plane_pts.shape[0]} points")
+    # print(f"-> generated calibrated plane with {plane_pts.shape[0]} points")
     
     
     #! COMBINE THE TWO POINTCLOUDS
-    pts_up = np.vstack([object_pts, plane_pts])
+    pts_up = np.vstack([object_pts_only, plane_pts])
     pcd_up = o3d.geometry.PointCloud()
     pcd_up.points = o3d.utility.Vector3dVector(pts_up)
     
     
     #! ROTATE THE TWO POINTCLOUDS
+    center = np.mean(object_pts, axis=0)
     result = rotate_pointcloud_180(pts_up, center)
     # Extract the rotated pointcloud only
     pts_down = result[0]
@@ -133,13 +167,13 @@ def run_graspnet_pipeline(object_pts):
     rotation_axis = result[2]
     min_proj = result[3]
     max_proj = result[4]
-    
+
     pcd_down = o3d.geometry.PointCloud()
     pcd_down.points = o3d.utility.Vector3dVector(pts_down)
     
     
     #! SAMPLE AND GENERATE THE GRASPS
-    # 2) Sample the points to provide always num_point to the net
+    # 2) Sample the points to always provide num_point to the net
     if len(pts_down) >= num_point:
         idxs = np.random.choice(len(pts_down), num_point, replace=False)
     else:
@@ -162,7 +196,7 @@ def run_graspnet_pipeline(object_pts):
     print(f"Total number of grasps AFTER collision check: {len(gg_down)}", flush=True)
     
     # 6) Select the first num_best_grasps grasps
-    gg_down = gg_down[:num_best_grasps] # Limit to the top num_best_grasps grasps
+    gg_down = gg_down[:num_best_grasps]
     print(f"Selecting only the first {min(len(gg_down), num_best_grasps)} grasps", flush=True)
     
     
@@ -173,14 +207,12 @@ def run_graspnet_pipeline(object_pts):
     
     #! FILTER OUT THE GRASPS BELONGING TO THE PLANE
     post_filtered_grasps = []
-    
     for grasp in gg_up:
-        if grasp.translation[2] >= z_plane + z_plane_threshold:
+        if grasp.translation[2] >= z_grasp_min_height:
             post_filtered_grasps.append(grasp)
     
     print(f"Total number of grasps AFTER filtering: kept {len(post_filtered_grasps)} out of {len(gg_up)} grasps", flush=True)
     gg_up_filtered = post_filtered_grasps
-    
     
     #! VISUALIZE IN OPEN3D
     global latest_pointcloud_shared, latest_grippers_shared, new_pc_flag
@@ -190,58 +222,8 @@ def run_graspnet_pipeline(object_pts):
         latest_pointcloud_shared = copy.deepcopy(pcd_up)
         latest_grippers_shared = copy.deepcopy(gg_up_filtered)
         new_pc_flag = True
-    
+
     return gg_up_filtered
-
-
-def run_graspnet_pipeline_SENZA_PIANO_MANUALE(object_pts):
-    """
-    Called for each new incoming point cloud (numpy array Nx3).
-    Computes grasp candidates and updates the visualization window.
-    
-    :param object_pts: np.ndarray of shape (N, 3) with XYZ coordinates
-    
-    :return: gg_up = GraspGroup containing the top-ranked grasp candidates.
-    """
-    net = get_net()
-    
-    pts_down = object_pts.copy()
-    pcd_down = o3d.geometry.PointCloud()
-    pcd_down.points = o3d.utility.Vector3dVector(pts_down)
-    
-    
-    #! SAMPLE AND GENERATE THE GRASPS
-    # 2) Sample the points to provide always num_point to the net
-    if len(pts_down) >= num_point:
-        idxs = np.random.choice(len(pts_down), num_point, replace=False)
-    else:
-        idxs1 = np.arange(len(pts_down))
-        idxs2 = np.random.choice(len(pts_down), num_point - len(pts_down), replace=True)
-        idxs = np.concatenate([idxs1, idxs2], axis=0)
-    pts_sampled = pts_down[idxs]
-    
-    # 3) Build end_points
-    pts_tensor = torch.from_numpy(pts_sampled[np.newaxis].astype(np.float32)).to(device)
-    end_points = {'point_clouds': pts_tensor, 'cloud_colors': np.ones_like(pts_sampled)}
-    
-    # 4) Generate the grasps
-    gg_down = get_grasps(net, end_points)
-    print(f"Total number of grasps generated: {len(gg_down)}", flush=True)
-    if collision_thresh > 0:
-        gg_down = collision_detection(gg_down, np.array(pcd_down.points))
-    print(f"Total number of grasps AFTER collision check: {len(gg_down)}", flush=True)
-    gg_down = gg_down[:num_best_grasps] # Limit to the top num_best_grasps grasps
-    
-    #! VISUALIZE IN OPEN3D
-    global latest_pointcloud_shared, latest_grippers_shared, new_pc_flag
-    latest_pointcloud_shared = None
-    latest_grippers_shared = None
-    with _window_lock:
-        latest_pointcloud_shared = copy.deepcopy(pcd_down)
-        latest_grippers_shared = copy.deepcopy(gg_down)
-        new_pc_flag = True
-    
-    return gg_down
 
 
 def rotate_pointcloud_180(points, center):

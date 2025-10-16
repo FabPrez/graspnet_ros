@@ -62,4 +62,4 @@ num_best_grasps = 10
 #! ============ REAL ENVIRONMENT PARAMETERS =============
 #! ======================================================
 z_plane_max_height = 0.04 # <-- REAL environment
-z_grasp_min_height = 0.07 #! z_grasp_min_height (in parameters.py) == ws_filter__min_z (in nbv_params.yaml)
+z_grasp_min_height = 0.09 #! z_grasp_min_height (in parameters.py) == ws_filter__min_z (in nbv_params.yaml)
